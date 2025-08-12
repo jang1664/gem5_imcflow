@@ -1,0 +1,7 @@
+Import('env')
+
+# Build the imcflow PIO device with pybind11
+
+SimObject('ImcflowPIO.py')
+
+Source('imcflow_pio.cc')
