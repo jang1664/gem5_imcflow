@@ -7,4 +7,4 @@ TARGET=$2
 ARCH=${ARCH:-X86}
 TARGET=${TARGET:-gem5.opt}
 
-scons -j64 "build/${ARCH}/${TARGET}"
+scons -j4 "build/${ARCH}/${TARGET}"
