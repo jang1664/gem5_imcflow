@@ -4,6 +4,8 @@
 #     --binary tests/test-progs/hello/bin/x86/linux/hello
 
 import argparse
+import sys
+import os
 
 from m5 import (
     instantiate,
@@ -16,37 +18,35 @@ from m5.objects import (
     SEWorkload,
 )
 
-from .system_imcflow import make_system
+# Add the config directory to the path so we can import system_imcflow
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from system_imcflow import make_system
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--binary", required=True, help="Path to user-level binary"
-    )
-    parser.add_argument(
-        "--imc-base", type=lambda x: int(x, 0), default=0x80000000
-    )
-    parser.add_argument(
-        "--imc-size", type=lambda x: int(x, 0), default=0x20000
-    )
-    parser.add_argument("--mem-size", default="512MB")
-    args = parser.parse_args()
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--binary", required=True, help="Path to user-level binary"
+)
+parser.add_argument(
+    "--imc-base", type=lambda x: int(x, 0), default=0x80000000
+)
+parser.add_argument(
+    "--imc-size", type=lambda x: int(x, 0), default=0x20000
+)
+parser.add_argument("--mem-size", default="512MB")
+args = parser.parse_args()
 
-    system = make_system(args.imc_base, args.imc_size, args.mem_size)
+system = make_system(args.imc_base, args.imc_size, args.mem_size)
 
-    # User-level workload
-    process = Process(cmd=[args.binary])
-    system.cpu.workload = process
-    system.cpu.createThreads()
+# User-level workload
+system.workload = SEWorkload.init_compatible(args.binary)
+process = Process(cmd=[args.binary])
+system.cpu.workload = process
+system.cpu.createThreads()
 
-    root = Root(full_system=False, system=system)
+root = Root(full_system=False, system=system)
 
-    instantiate(root)
+instantiate()
 
-    exit_event = simulate()
-    print(f"Exiting @ tick {exit_event.getCause()} : {exit_event.getCause()}")
-
-
-if __name__ == "__main__":
-    main()
+exit_event = simulate()
+print(f"Exiting @ tick {exit_event.getCause()} : {exit_event.getCause()}")

@@ -4,19 +4,18 @@
 #include <pybind11/pybind11.h>
 
 #include "base/logging.hh"
-#include "dev/dma_device.hh"
 
 namespace py = pybind11;
 
 namespace gem5 {
 
-ImcflowPIO::ImcflowPIO(const ImcflowPIO::Params &p) : PioDevice(p) {
-  // Map the PIO range based on parameters
-  ranges.clear();
-  ranges.push_back(RangeSize(p.pio_addr, p.pio_size));
+ImcflowPIO::ImcflowPIO(const ImcflowPIO::Params &p)
+  : BasicPioDevice(p, p.pio_size) {
+  // Initialize Python interpreter if not already done
+  if (!Py_IsInitialized()) {
+    py::initialize_interpreter();
+  }
 }
-
-AddrRangeList ImcflowPIO::getAddrRanges() const { return ranges; }
 
 static py::object get_forwarder() {
   try {
@@ -28,7 +27,7 @@ static py::object get_forwarder() {
 }
 
 Tick ImcflowPIO::read(PacketPtr pkt) {
-  const Addr addr = pkt->getAddr() - ranges.front().start();
+  const Addr addr = pkt->getAddr() - pioAddr;
   const unsigned size = pkt->getSize();
 
   py::gil_scoped_acquire gil;
@@ -37,14 +36,14 @@ Tick ImcflowPIO::read(PacketPtr pkt) {
   const uint64_t data = data_obj.cast<uint64_t>();
 
   pkt->makeResponse();
-  pkt->setUintX(data, size, true);
+  pkt->setUintX(data, ByteOrder::little);
   return pioDelay;
 }
 
 Tick ImcflowPIO::write(PacketPtr pkt) {
-  const Addr addr = pkt->getAddr() - ranges.front().start();
+  const Addr addr = pkt->getAddr() - pioAddr;
   const unsigned size = pkt->getSize();
-  uint64_t data = pkt->getUintX(size);
+  uint64_t data = pkt->getUintX(ByteOrder::little);
 
   py::gil_scoped_acquire gil;
   auto fwd = get_forwarder();
