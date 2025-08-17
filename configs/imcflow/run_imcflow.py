@@ -47,6 +47,7 @@ system.cpu.createThreads()
 root = Root(full_system=False, system=system)
 
 instantiate()
+process.map(args.imc_base, args.imc_base, args.imc_size)
 
 exit_event = simulate()
 print(f"Exiting @ tick {exit_event.getCause()} : {exit_event.getCause()}")

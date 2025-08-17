@@ -28,6 +28,12 @@
 #define STATE_RUN       1
 #define STATE_PROGRAM   2
 
+// PC control flags (top 2 bits of PC register)
+#define PC_FLAG_START_P0        (0U << 30) // 0b00...
+#define PC_FLAG_START_P1        (1U << 30) // 0b01...
+#define PC_FLAG_START_EXTERN    (2U << 30) // 0b10...
+#define PC_VAL_MASK             (0x3FFFFFFF)
+
 // Test patterns
 #define TEST_PATTERN1   0xDEADBEEF
 #define TEST_PATTERN2   0xCAFEBABE
@@ -58,18 +64,21 @@ void test_register_access() {
     uint32_t cmd = imcflow_regs[REG_CMD/4];
     printf("Initial command: %u\n", cmd);
 
-    // Test PC register writes
-    printf("Testing PC register writes...\n");
-    imcflow_regs[REG_INODE_PC0/4] = TEST_PATTERN1;
-    imcflow_regs[REG_INODE_PC1/4] = TEST_PATTERN2;
+    // Test PC register writes with valid flags
+    printf("Testing PC register writes with valid flags...\n");
+    uint32_t pc_write_val0 = PC_FLAG_START_EXTERN | 0x1234;
+    uint32_t pc_write_val1 = PC_FLAG_START_P1 | 0x5678;
+
+    imcflow_regs[REG_INODE_PC0/4] = pc_write_val0;
+    imcflow_regs[REG_INODE_PC1/4] = pc_write_val1;
 
     uint32_t pc0 = imcflow_regs[REG_INODE_PC0/4];
     uint32_t pc1 = imcflow_regs[REG_INODE_PC1/4];
 
     printf("PC0: wrote 0x%08x, read 0x%08x %s\n",
-           TEST_PATTERN1, pc0, (pc0 == TEST_PATTERN1) ? "✓" : "✗");
+           pc_write_val0, pc0, (pc0 == pc_write_val0) ? "✓" : "✗");
     printf("PC1: wrote 0x%08x, read 0x%08x %s\n",
-           TEST_PATTERN2, pc1, (pc1 == TEST_PATTERN2) ? "✓" : "✗");
+           pc_write_val1, pc1, (pc1 == pc_write_val1) ? "✓" : "✗");
 }
 
 void test_instruction_memory() {
@@ -125,18 +134,30 @@ void test_state_machine() {
     uint32_t state = imcflow_regs[REG_STATE/4];
     printf("Current state: %u\n", state);
 
+    // Set a valid PC value before running
+    printf("Setting PC for inode0 to start at 0x0 with external flag\n");
+    imcflow_regs[REG_INODE_PC0/4] = PC_FLAG_START_EXTERN | 0x0;
+
     // Try to trigger simulation by writing to CMD register
     printf("Writing RUN command to trigger simulation...\n");
     imcflow_regs[REG_CMD/4] = STATE_RUN;
 
-    // Read state after command
+    // In a real simulation, we would wait for completion.
+    // Here, we just check if the state changed.
     usleep(1000);  // Give some time for processing
     state = imcflow_regs[REG_STATE/4];
-    printf("State after RUN command: %u\n", state);
+    printf("State after RUN command: %u (expected: %u)\n", state, STATE_RUN);
 
-    // Read command register
+    // Command register should be cleared after being processed
     uint32_t cmd = imcflow_regs[REG_CMD/4];
-    printf("Command register: %u\n", cmd);
+    printf("Command register after RUN: %u (expected: %u)\n", cmd, STATE_IDLE);
+
+    // Set back to IDLE for subsequent tests
+    printf("Setting back to IDLE state...\n");
+    imcflow_regs[REG_CMD/4] = STATE_IDLE;
+    usleep(1000);
+    state = imcflow_regs[REG_STATE/4];
+    printf("State after IDLE command: %u (expected: %u)\n", state, STATE_IDLE);
 }
 
 void test_multiple_nodes() {
