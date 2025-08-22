@@ -4,8 +4,8 @@
 #     --binary tests/test-progs/hello/bin/x86/linux/hello
 
 import argparse
-import sys
 import os
+import sys
 
 from m5 import (
     instantiate,
@@ -22,17 +22,12 @@ from m5.objects import (
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from system_imcflow import make_system
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--binary", required=True, help="Path to user-level binary"
 )
-parser.add_argument(
-    "--imc-base", type=lambda x: int(x, 0), default=0x80000000
-)
-parser.add_argument(
-    "--imc-size", type=lambda x: int(x, 0), default=0x20000
-)
+parser.add_argument("--imc-base", type=lambda x: int(x, 0), default=0x80000000)
+parser.add_argument("--imc-size", type=lambda x: int(x, 0), default=300000)
 parser.add_argument("--mem-size", default="512MB")
 args = parser.parse_args()
 
