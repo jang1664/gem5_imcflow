@@ -1,0 +1,6 @@
+*
+!.gitignore
+!*.c
+!Makefile
+!*.h
+!test.sh
