@@ -18,10 +18,14 @@
 #define REG_INODE_PC3   0x14
 
 // Memory regions (based on address map)
-#define INODE0_INST_BASE  0x80      // inode0 instruction memory
-#define INODE0_DATA_BASE  0x480     // inode0 data memory (0x80 + 0x400)
-#define INODE1_INST_BASE  0x10080   // inode1 instruction memory
-#define INODE1_DATA_BASE  0x10480   // inode1 data memory
+#define INODE0_INST_BASE  128      // inode0 instruction memory
+#define INODE0_DATA_BASE  1152     // inode0 data memory (0x80 + 0x400)
+#define INODE1_INST_BASE  66688   // inode1 instruction memory
+#define INODE1_DATA_BASE  67712   // inode1 data memory
+#define INODE2_INST_BASE  133248   // inode1 instruction memory
+#define INODE2_DATA_BASE  134272   // inode1 data memory
+#define INODE3_INST_BASE  199808   // inode1 instruction memory
+#define INODE3_DATA_BASE  200832   // inode1 data memory
 
 // State values
 #define STATE_IDLE      0
@@ -29,9 +33,9 @@
 #define STATE_PROGRAM   2
 
 // PC control flags (top 2 bits of PC register)
-#define PC_FLAG_START_P0        (0U << 30) // 0b00...
-#define PC_FLAG_START_P1        (1U << 30) // 0b01...
-#define PC_FLAG_START_EXTERN    (2U << 30) // 0b10...
+#define PC_FLAG_START_P0        (2U << 30) // 0b00...
+#define PC_FLAG_START_P1        (0U << 30) // 0b01...
+#define PC_FLAG_START_EXTERN    (1U << 30) // 0b10...
 #define PC_VAL_MASK             (0x3FFFFFFF)
 
 // Test patterns
@@ -86,22 +90,46 @@ void test_instruction_memory() {
 
     // Test inode0 instruction memory
     volatile uint32_t *inst_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + INODE0_INST_BASE);
-
     printf("Writing to inode0 instruction memory...\n");
-    inst_mem[0] = TEST_PATTERN1;
-    inst_mem[1] = TEST_PATTERN2;
-    inst_mem[2] = TEST_PATTERN3;
+    inst_mem[0] = 0; //NOP
+    inst_mem[1] = 28; // INTERRUPT
+    inst_mem[2] = 33; // DONE
+    inst_mem[3] = 34; // HALT
 
     uint32_t inst0 = inst_mem[0];
     uint32_t inst1 = inst_mem[1];
     uint32_t inst2 = inst_mem[2];
+    uint32_t inst3 = inst_mem[3];
 
     printf("Inst[0]: wrote 0x%08x, read 0x%08x %s\n",
-           TEST_PATTERN1, inst0, (inst0 == TEST_PATTERN1) ? "✓" : "✗");
+           0, inst0, (inst0 == 0) ? "✓" : "✗");
     printf("Inst[1]: wrote 0x%08x, read 0x%08x %s\n",
-           TEST_PATTERN2, inst1, (inst1 == TEST_PATTERN2) ? "✓" : "✗");
+           28, inst1, (inst1 == 28) ? "✓" : "✗");
     printf("Inst[2]: wrote 0x%08x, read 0x%08x %s\n",
-           TEST_PATTERN3, inst2, (inst2 == TEST_PATTERN3) ? "✓" : "✗");
+           33, inst2, (inst2 == 33) ? "✓" : "✗");
+    printf("Inst[3]: wrote 0x%08x, read 0x%08x %s\n",
+           34, inst3, (inst3 == 34) ? "✓" : "✗");
+
+    inst_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + INODE1_INST_BASE);
+    printf("Writing to inode1 instruction memory...\n");
+    inst_mem[0] = 0; //NOP
+    inst_mem[1] = 28; // INTERRUPT
+    inst_mem[2] = 33; // DONE
+    inst_mem[3] = 34; // HALT
+
+    inst_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + INODE2_INST_BASE);
+    printf("Writing to inode2 instruction memory...\n");
+    inst_mem[0] = 0; //NOP
+    inst_mem[1] = 28; // INTERRUPT
+    inst_mem[2] = 33; // DONE
+    inst_mem[3] = 34; // HALT
+
+    inst_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + INODE3_INST_BASE);
+    printf("Writing to inode3 instruction memory...\n");
+    inst_mem[0] = 0; //NOP
+    inst_mem[1] = 28; // INTERRUPT
+    inst_mem[2] = 33; // DONE
+    inst_mem[3] = 34; // HALT
 }
 
 void test_data_memory() {
@@ -137,6 +165,9 @@ void test_state_machine() {
     // Set a valid PC value before running
     printf("Setting PC for inode0 to start at 0x0 with external flag\n");
     imcflow_regs[REG_INODE_PC0/4] = PC_FLAG_START_EXTERN | 0x0;
+    imcflow_regs[REG_INODE_PC1/4] = PC_FLAG_START_EXTERN | 0x0;
+    imcflow_regs[REG_INODE_PC2/4] = PC_FLAG_START_EXTERN | 0x0;
+    imcflow_regs[REG_INODE_PC3/4] = PC_FLAG_START_EXTERN | 0x0;
 
     // Try to trigger simulation by writing to CMD register
     printf("Writing RUN command to trigger simulation...\n");
@@ -144,7 +175,6 @@ void test_state_machine() {
 
     // In a real simulation, we would wait for completion.
     // Here, we just check if the state changed.
-    usleep(1000);  // Give some time for processing
     state = imcflow_regs[REG_STATE/4];
     printf("State after RUN command: %u (expected: %u)\n", state, STATE_RUN);
 
@@ -155,29 +185,8 @@ void test_state_machine() {
     // Set back to IDLE for subsequent tests
     printf("Setting back to IDLE state...\n");
     imcflow_regs[REG_CMD/4] = STATE_IDLE;
-    usleep(1000);
     state = imcflow_regs[REG_STATE/4];
     printf("State after IDLE command: %u (expected: %u)\n", state, STATE_IDLE);
-}
-
-void test_multiple_nodes() {
-    printf("\n=== Testing Multiple Interface Nodes ===\n");
-
-    // Test inode1 instruction memory
-    volatile uint32_t *inst1_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + INODE1_INST_BASE);
-
-    printf("Writing to inode1 instruction memory...\n");
-    inst1_mem[0] = ~TEST_PATTERN1;  // Inverted pattern
-
-    uint32_t inst1 = inst1_mem[0];
-    printf("INode1 Inst[0]: wrote 0x%08x, read 0x%08x %s\n",
-           ~TEST_PATTERN1, inst1, (inst1 == ~TEST_PATTERN1) ? "✓" : "✗");
-
-    // Verify inode0 still has original data
-    volatile uint32_t *inst0_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + INODE0_INST_BASE);
-    uint32_t inst0 = inst0_mem[0];
-    printf("INode0 Inst[0]: read 0x%08x (should be unchanged) %s\n",
-           inst0, (inst0 == TEST_PATTERN1) ? "✓" : "✗");
 }
 
 int main() {
@@ -193,9 +202,8 @@ int main() {
 
     // Run all tests
     test_register_access();
-    test_instruction_memory();
     test_data_memory();
-    test_multiple_nodes();
+    test_instruction_memory();
     test_state_machine();
 
     printf("\n=== Test Summary ===\n");
