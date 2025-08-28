@@ -7,7 +7,7 @@
 
 // ImcFlow device base address (should match gem5 config)
 #define IMCFLOW_BASE    0x80000000UL
-#define IMCFLOW_SIZE    0x20000UL
+#define IMCFLOW_SIZE    0x493E0UL // 300000, must match --imc-size default
 
 // Register offsets (based on params.py)
 #define REG_STATE       0x00    // REG_STATE_ID = 0
@@ -136,23 +136,47 @@ void test_data_memory() {
     printf("\n=== Testing Data Memory ===\n");
 
     // Test inode0 data memory (256-bit wide, but we'll access as 32-bit words)
+    // data will be automatically duplicated across 256 bit width
+    // ex. data_mem[0] = 0xDEADBEEF => data_mem[0..7] = 0xDEADBEEF
+    // need zero padding 32 bits to 256 bits (8 words)
     volatile uint32_t *data_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + INODE0_DATA_BASE);
 
     printf("Writing to inode0 data memory...\n");
     data_mem[0] = TEST_PATTERN1;
+    // data_mem[0] will be overwritted by TEST_PATTERN2
     data_mem[1] = TEST_PATTERN2;
-    data_mem[8] = TEST_PATTERN3;  // Next 256-bit word
+    data_mem[2] = TEST_PATTERN3;  // Next 256-bit word
+    data_mem[3] = 0x00000000;
+    data_mem[4] = 0x00000000;
+    data_mem[5] = TEST_PATTERN1;
+    data_mem[6] = TEST_PATTERN2;
+    data_mem[7] = TEST_PATTERN3;
 
     uint32_t data0 = data_mem[0];
     uint32_t data1 = data_mem[1];
-    uint32_t data8 = data_mem[8];
+    uint32_t data2 = data_mem[2];
+    uint32_t data3 = data_mem[3];
+    uint32_t data4 = data_mem[4];
+    uint32_t data5 = data_mem[5];
+    uint32_t data6 = data_mem[6];
+    uint32_t data7 = data_mem[7];
 
     printf("Data[0]: wrote 0x%08x, read 0x%08x %s\n",
            TEST_PATTERN1, data0, (data0 == TEST_PATTERN1) ? "✓" : "✗");
     printf("Data[1]: wrote 0x%08x, read 0x%08x %s\n",
            TEST_PATTERN2, data1, (data1 == TEST_PATTERN2) ? "✓" : "✗");
-    printf("Data[8]: wrote 0x%08x, read 0x%08x %s\n",
-           TEST_PATTERN3, data8, (data8 == TEST_PATTERN3) ? "✓" : "✗");
+    printf("Data[2]: wrote 0x%08x, read 0x%08x %s\n",
+           TEST_PATTERN3, data2, (data2 == TEST_PATTERN3) ? "✓" : "✗");
+    printf("Data[3]: wrote 0x%08x, read 0x%08x %s\n",
+           0x00000000, data3, (data3 == 0x00000000) ? "✓" : "✗");
+    printf("Data[4]: wrote 0x%08x, read 0x%08x %s\n",
+           0x00000000, data4, (data4 == 0x00000000) ? "✓" : "✗");
+    printf("Data[5]: wrote 0x%08x, read 0x%08x %s\n",
+           TEST_PATTERN1, data5, (data5 == TEST_PATTERN1) ? "✓" : "✗");
+    printf("Data[6]: wrote 0x%08x, read 0x%08x %s\n",
+           TEST_PATTERN2, data6, (data6 == TEST_PATTERN2) ? "✓" : "✗");
+    printf("Data[7]: wrote 0x%08x, read 0x%08x %s\n",
+           TEST_PATTERN3, data7, (data7 == TEST_PATTERN3) ? "✓" : "✗");
 }
 
 void test_state_machine() {
@@ -175,8 +199,9 @@ void test_state_machine() {
 
     // In a real simulation, we would wait for completion.
     // Here, we just check if the state changed.
+    // The state should transition from RUN to IDLE by the DONE instruction
     state = imcflow_regs[REG_STATE/4];
-    printf("State after RUN command: %u (expected: %u)\n", state, STATE_RUN);
+    printf("State after RUN command: %u (expected: %u)\n", state, STATE_IDLE);
 
     // Command register should be cleared after being processed
     uint32_t cmd = imcflow_regs[REG_CMD/4];
@@ -188,6 +213,47 @@ void test_state_machine() {
     state = imcflow_regs[REG_STATE/4];
     printf("State after IDLE command: %u (expected: %u)\n", state, STATE_IDLE);
 }
+
+// volatile uint32_t * set_instruction_memory(int inode_id, int is_data) {
+//     // This function is integrated into test_instruction_memory()
+//     static const uintptr_t inode_bases[][2] = {
+//         {INODE0_INST_BASE, INODE0_DATA_BASE},
+//         {INODE1_INST_BASE, INODE1_DATA_BASE},
+//         {INODE2_INST_BASE, INODE2_DATA_BASE},
+//         {INODE3_INST_BASE, INODE3_DATA_BASE}
+//     };
+//
+//     volatile uint32_t *inst_mem = (volatile uint32_t*)((uint8_t*)imcflow_mem + inode_bases[inode_id][is_data]);
+//     return inst_mem;
+// }
+//
+// void test_interrupt() {
+//     printf("\n=== Testing Interrupt Handling ===\n");
+//
+//     // This is a placeholder as actual interrupt handling would require
+//     // integration with the gem5 simulation environment.
+//     printf("Simulating interrupt handling is not implemented in this test.\n");
+//     // Setting memory for all inodes
+//     printf("Setting memory for all inodes...\n");
+//     volatile uint32_t *inode_0_inst_mem = set_instruction_memory(0, 0);
+//     volatile uint32_t *inode_0_data_mem = set_instruction_memory(0, 1);
+//     volatile uint32_t *inode_1_inst_mem = set_instruction_memory(1, 0);
+//     volatile uint32_t *inode_1_data_mem = set_instruction_memory(1, 1);
+//     volatile uint32_t *inode_2_inst_mem = set_instruction_memory(2, 0);
+//     volatile uint32_t *inode_2_data_mem = set_instruction_memory(2, 1);
+//     volatile uint32_t *inode_3_inst_mem = set_instruction_memory(3, 0);
+//     volatile uint32_t *inode_3_data_mem = set_instruction_memory(3, 1);
+//
+//     // Writing simple program to inode instruction memory
+//
+//     // Writing Policy Tables to inode data memory
+//
+//     // Writing input data to inode data memory
+//
+//     // Setting PC registers to start execution
+//
+//     //
+// }
 
 int main() {
     printf("ImcFlow Device Test Program\n");

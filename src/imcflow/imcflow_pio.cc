@@ -30,9 +30,12 @@ Tick ImcflowPIO::read(PacketPtr pkt) {
   const Addr addr = pkt->getAddr() - pioAddr;
   const unsigned size = pkt->getSize();
 
+  // only supports 4-byte read
+  assert(size == 4);
+
   py::gil_scoped_acquire gil;
   auto fwd = get_forwarder();
-  auto data_obj = fwd.attr("read")(py::int_(addr), py::int_(size));
+  auto data_obj = fwd.attr("read")(py::int_(addr));
   const uint64_t data = data_obj.cast<uint64_t>();
 
   pkt->makeResponse();
@@ -45,10 +48,13 @@ Tick ImcflowPIO::write(PacketPtr pkt) {
   const unsigned size = pkt->getSize();
   uint64_t data = pkt->getUintX(ByteOrder::little);
 
+  // only supports 4-byte write
+  assert(size == 4);
+
   py::gil_scoped_acquire gil;
   auto fwd = get_forwarder();
   // strobe: gem5 doesn't pass; set None
-  fwd.attr("write")(py::int_(addr), py::int_(size), py::int_(data));
+  fwd.attr("write")(py::int_(addr), py::int_(data));
 
   pkt->makeResponse();
   return pioDelay;

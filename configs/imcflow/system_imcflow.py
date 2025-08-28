@@ -2,7 +2,8 @@
 
 from m5.objects import *
 
-def make_system(imc_base=0x80000000, imc_size=0x20000, mem_size="512MB"):
+
+def make_system(imc_base=0x80000000, imc_size=0x493E0, mem_size="512MB"):
     system = System()
     system.clk_domain = SrcClockDomain()
     system.clk_domain.clock = "1GHz"
