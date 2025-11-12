@@ -5,3 +5,4 @@ Import('*')
 SimObject('ImcflowPIO.py', sim_objects=['ImcflowPIO'])
 
 Source('imcflow_pio.cc')
+DebugFlag("ImcflowPIO", "Imcflow PIO device debugging")

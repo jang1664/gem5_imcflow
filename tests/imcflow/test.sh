@@ -1,4 +1,8 @@
 #!/bin/bash
 
+BINARY=${1:-"test_imcflow"}
+# DFLAGS="ImcflowPIO,BaseXBar,AddrRanges"
+
+DFLAGS="ImcflowPIO,AddrRanges"
 export PYTHONPATH=$PYTHONPATH:/root/project/tvm/tvm_practice/tvm_env/lib/python3.10/site-packages
-$GEM5_HOME/build/X86/gem5.opt /root/project/imcflow/pmap/ISA_sim/gem5/configs/imcflow/run_imcflow.py --binary test_imcflow
+$GEM5_HOME/build/X86/gem5.opt --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY

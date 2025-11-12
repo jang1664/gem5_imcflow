@@ -1,4 +1,5 @@
 #include "imcflow/imcflow_pio.hh"
+#include "debug/ImcflowPIO.hh"
 
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
@@ -29,6 +30,7 @@ static py::object get_forwarder() {
 Tick ImcflowPIO::read(PacketPtr pkt) {
   const Addr addr = pkt->getAddr() - pioAddr;
   const unsigned size = pkt->getSize();
+  DPRINTF(ImcflowPIO, "Read request at addr: 0x%lx, size: %u\n", addr, size);
 
   // only supports 4-byte read
   assert(size == 4);
@@ -40,6 +42,7 @@ Tick ImcflowPIO::read(PacketPtr pkt) {
 
   pkt->makeResponse();
   pkt->setUintX(data, ByteOrder::little);
+  DPRINTF(ImcflowPIO, "Read response data: 0x%lx\n", data);
   return pioDelay;
 }
 
@@ -47,6 +50,8 @@ Tick ImcflowPIO::write(PacketPtr pkt) {
   const Addr addr = pkt->getAddr() - pioAddr;
   const unsigned size = pkt->getSize();
   uint64_t data = pkt->getUintX(ByteOrder::little);
+  DPRINTF(ImcflowPIO, "Write request at addr: 0x%lx, size: %u, data: 0x%lx\n",
+          addr, size, data);
 
   // only supports 4-byte write
   assert(size == 4);

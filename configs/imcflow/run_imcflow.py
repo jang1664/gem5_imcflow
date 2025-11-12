@@ -27,7 +27,7 @@ parser.add_argument(
     "--binary", required=True, help="Path to user-level binary"
 )
 parser.add_argument("--imc-base", type=lambda x: int(x, 0), default=0x80000000)
-parser.add_argument("--imc-size", type=lambda x: int(x, 0), default=300000)
+parser.add_argument("--imc-size", type=lambda x: int(x, 0), default=266368)
 parser.add_argument("--mem-size", default="512MB")
 args = parser.parse_args()
 
