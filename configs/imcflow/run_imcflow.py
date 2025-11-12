@@ -29,12 +29,17 @@ parser.add_argument(
 parser.add_argument("--imc-base", type=lambda x: int(x, 0), default=0x80000000)
 parser.add_argument("--imc-size", type=lambda x: int(x, 0), default=266368)
 parser.add_argument("--mem-size", default="512MB")
+parser.add_argument( "--gdb", action="store_true", help="Enable gdb stub on the CPU",)
 args = parser.parse_args()
 
 system = make_system(args.imc_base, args.imc_size, args.mem_size)
 
 # User-level workload
 system.workload = SEWorkload.init_compatible(args.binary)
+if args.gdb:
+  system.workload.wait_for_remote_gdb = True
+  system.workload.remote_gdb_port = 7000
+
 process = Process(cmd=[args.binary])
 system.cpu.workload = process
 system.cpu.createThreads()
