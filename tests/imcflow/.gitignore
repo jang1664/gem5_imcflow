@@ -1,7 +1,4 @@
-*
-!.gitignore
-!*.c
-!Makefile
-!*.h
-!test.sh
-!copy.sh
+binaries
+logs
+m5out
+mlf
