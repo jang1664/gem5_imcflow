@@ -26,6 +26,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "--binary", required=True, help="Path to user-level binary"
 )
+parser.add_argument(
+    "--test-name", default="default_test", help="Test name for input/output directories"
+)
 parser.add_argument("--imc-base", type=lambda x: int(x, 0), default=0x80000000)
 parser.add_argument("--imc-size", type=lambda x: int(x, 0), default=266368)
 parser.add_argument("--mem-size", default="512MB")
@@ -40,7 +43,8 @@ if args.gdb:
   system.workload.wait_for_remote_gdb = True
   system.workload.remote_gdb_port = 7000
 
-process = Process(cmd=[args.binary])
+# Pass test_name as first argument to the binary
+process = Process(cmd=[args.binary, args.test_name])
 system.cpu.workload = process
 system.cpu.createThreads()
 

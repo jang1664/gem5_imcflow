@@ -4,3 +4,4 @@ logs
 logs.*/
 m5out
 mlf
+test_outputs/*
