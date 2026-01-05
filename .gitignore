@@ -36,3 +36,17 @@ configs/dram/lowp_sweep.cfg
 .vscode
 typings
 .DS_Store
+
+# VCS simulation build artifacts
+**/csrc/
+**/simv.daidir/
+**/simv
+**/simv_*
+**/*.log
+**/ucli.key
+**/vc_hdrs.h
+**/AN.DB/
+**/*.vpd
+**/DVEfiles/
+**/inter.vpd
+**/elabMhIdDidWork.txt
