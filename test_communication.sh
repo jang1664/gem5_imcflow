@@ -19,9 +19,14 @@ if [ ! -f "$VCS_DIR/simv_socket" ]; then
 fi
 
 # Check if gem5 exists
-if [ ! -f "$GEM5_DIR/build/X86/gem5.opt" ]; then
-    echo "[ERROR] gem5 not built!"
-    echo "Run: cd $GEM5_DIR && scons build/X86/gem5.opt -j\$(nproc)"
+if [ -f "$GEM5_HOME/build/X86/gem5.fast" ]; then
+    GEM5_BIN="$GEM5_HOME/build/X86/gem5.fast"
+    echo "Using gem5.fast for faster simulation"
+elif [ -f "$GEM5_HOME/build/X86/gem5.opt" ]; then
+    GEM5_BIN="$GEM5_HOME/build/X86/gem5.opt"
+    echo "Using gem5.opt (gem5.fast not found)"
+else
+    echo "[ERROR] No gem5 binary found!"
     exit 1
 fi
 
@@ -67,7 +72,7 @@ echo "=========================================="
 echo ""
 
 cd "$GEM5_DIR"
-./build/X86/gem5.opt configs/imcflow/test_communication.py > gem5.log 2>&1
+$GEM5_BIN configs/imcflow/test_communication.py > gem5.log 2>&1
 GEM5_EXIT=$?
 
 echo ""

@@ -40,7 +40,7 @@ system.system_port = system.membus.cpu_side_ports
 
 # ImcflowPIOSocket device for VCS communication
 IMC_BASE = 0x80000000
-IMC_SIZE = 0x10000
+IMC_SIZE = 266368  # 260KB
 VCS_PORT = 9999
 
 system.imc = ImcflowPIOSocket(
