@@ -105,14 +105,14 @@ echo ""
 
 # Show VCS transaction log
 echo "=========================================="
-echo "  VCS Transaction Log"
+echo "  VCS Transaction Log (tail -20)"
 echo "=========================================="
 grep -E "\[DPI-C\] (Received|Sent)" "$VCS_DIR/vcs.log" | tail -20 || echo "No transactions found"
 echo ""
 
 # Show gem5 output
 echo "=========================================="
-echo "  gem5 Output"
+echo "  gem5 Output (tail -30)"
 echo "=========================================="
 cat "$GEM5_DIR/gem5.log" | grep -E "(gem5|VCS|WRITE|READ|Test|Communication)" | tail -30
 echo ""

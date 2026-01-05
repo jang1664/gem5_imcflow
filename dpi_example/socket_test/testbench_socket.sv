@@ -123,8 +123,8 @@ module testbench_socket;
                         break;
                     end
                 end else begin
-                    // Got transactions, now wait for more with shorter timeout (10 seconds)
-                    if (no_transaction_count > 100000) begin
+                    // Got transactions, now wait for more with shorter timeout (100 seconds)
+                    if (no_transaction_count > 1000000) begin
                         $display("[SV] No more transactions for 10s after receiving %0d transactions",
                                  transaction_received_count);
                         $display("[SV] Assuming test complete");
