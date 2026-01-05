@@ -1,19 +1,22 @@
 #include "imcflow/imcflow_pio_socket.hh"
-#include "debug/ImcflowPIOSocket.hh"
-#include "base/logging.hh"
 
-#include <sys/socket.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <arpa/inet.h>
+#include <sys/socket.h>
 #include <unistd.h>
-#include <cstring>
+
 #include <cerrno>
+#include <cstring>
+
+#include "base/logging.hh"
+#include "debug/ImcflowPIOSocket.hh"
 
 namespace gem5 {
 
 // Transaction structure matching VCS DPI side
-struct Transaction {
+struct Transaction
+{
     uint8_t is_write;    // 1 = write, 0 = read
     uint32_t addr;       // Address
     uint32_t data;       // Data (for write) or response (for read)

@@ -1,11 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
-#include <errno.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 #include "svdpi.h"
 
 extern "C" {
@@ -16,7 +18,8 @@ static int client_fd = -1;
 static int server_port = 9999;
 
 // Transaction structure matching MMIO protocol
-struct Transaction {
+struct Transaction
+{
     uint8_t is_write;    // 1 = write, 0 = read
     uint32_t addr;       // Address
     uint32_t data;       // Data (for write) or response (for read)

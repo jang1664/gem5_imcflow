@@ -12,7 +12,8 @@ namespace gem5 {
  * Socket-based ImcflowPIO device for VCS co-simulation
  * Communicates with VCS via TCP sockets instead of Python
  */
-class ImcflowPIOSocket : public BasicPioDevice {
+class ImcflowPIOSocket : public BasicPioDevice
+{
  public:
   using Params = ImcflowPIOSocketParams;
   ImcflowPIOSocket(const Params &p);

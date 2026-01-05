@@ -1,15 +1,17 @@
 // Simple socket client to test the DPI server
 // This simulates what gem5 would do
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-struct Transaction {
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
+struct Transaction
+{
     uint8_t is_write;
     uint32_t addr;
     uint32_t data;

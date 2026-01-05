@@ -1,8 +1,8 @@
 // Test program that performs MMIO read/write to ImcflowPIO device
 // Compile: gcc -static -o mmio_test mmio_test.c
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 // ImcflowPIO device base address
 #define IMC_BASE 0x80000000UL

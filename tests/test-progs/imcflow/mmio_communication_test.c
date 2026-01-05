@@ -1,5 +1,5 @@
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 // MMIO base address (must match gem5 config)
 #define IMC_BASE 0x80000000
