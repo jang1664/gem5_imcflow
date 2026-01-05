@@ -111,12 +111,8 @@ Tick ImcflowPIOSocket::read(PacketPtr pkt) {
   // Ensure socket is connected
   if (!connected) {
     if (!initSocket()) {
-      warn("ImcflowPIOSocket: Cannot connect to VCS server "
-           "for read at addr 0x%lx", addr);
-      warn("ImcflowPIOSocket: VCS not available, returning zero");
-      pkt->makeResponse();
-      pkt->setUintX(0, ByteOrder::little);
-      return pioDelay;
+      panic("ImcflowPIOSocket: Cannot connect to VCS server "
+            "for read at addr 0x%lx", addr);
     }
   }
 
@@ -128,14 +124,8 @@ Tick ImcflowPIOSocket::read(PacketPtr pkt) {
 
   ssize_t sent = send(socket_fd, &txn, sizeof(txn), 0);
   if (sent != sizeof(txn)) {
-    warn("ImcflowPIOSocket: Failed to send read transaction "
-         "(sent %zd/%zu bytes): %s", sent, sizeof(txn), strerror(errno));
-    warn("ImcflowPIOSocket: VCS connection lost, "
-         "closing socket and returning zero");
-    closeSocket();
-    pkt->makeResponse();
-    pkt->setUintX(0, ByteOrder::little);
-    return pioDelay;
+    panic("ImcflowPIOSocket: Failed to send read transaction "
+          "(sent %zd/%zu bytes): %s", sent, sizeof(txn), strerror(errno));
   }
 
   // Receive response
@@ -143,15 +133,9 @@ Tick ImcflowPIOSocket::read(PacketPtr pkt) {
   ssize_t received = recv(socket_fd, &response, sizeof(response),
                           MSG_WAITALL);
   if (received != sizeof(response)) {
-    warn("ImcflowPIOSocket: Failed to receive read response "
-         "(got %zd/%zu bytes): %s",
-         received, sizeof(response), strerror(errno));
-    warn("ImcflowPIOSocket: VCS connection lost, "
-         "closing socket and returning zero");
-    closeSocket();
-    pkt->makeResponse();
-    pkt->setUintX(0, ByteOrder::little);
-    return pioDelay;
+    panic("ImcflowPIOSocket: Failed to receive read response "
+          "(got %zd/%zu bytes): %s",
+          received, sizeof(response), strerror(errno));
   }
 
   const uint64_t data = response.data;
@@ -175,11 +159,8 @@ Tick ImcflowPIOSocket::write(PacketPtr pkt) {
   // Ensure socket is connected
   if (!connected) {
     if (!initSocket()) {
-      warn("ImcflowPIOSocket: Cannot connect to VCS server "
-           "for write at addr 0x%lx", addr);
-      warn("ImcflowPIOSocket: VCS not available, ignoring write");
-      pkt->makeResponse();
-      return pioDelay;
+      panic("ImcflowPIOSocket: Cannot connect to VCS server "
+            "for write at addr 0x%lx", addr);
     }
   }
 
@@ -191,11 +172,8 @@ Tick ImcflowPIOSocket::write(PacketPtr pkt) {
 
   ssize_t sent = send(socket_fd, &txn, sizeof(txn), 0);
   if (sent != sizeof(txn)) {
-    warn("ImcflowPIOSocket: Failed to send write transaction "
-         "(sent %zd/%zu bytes): %s", sent, sizeof(txn), strerror(errno));
-    warn("ImcflowPIOSocket: VCS connection lost, "
-         "closing socket and ignoring write");
-    closeSocket();
+    panic("ImcflowPIOSocket: Failed to send write transaction "
+          "(sent %zd/%zu bytes): %s", sent, sizeof(txn), strerror(errno));
   }
 
   pkt->makeResponse();
