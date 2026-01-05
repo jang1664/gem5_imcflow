@@ -50,3 +50,4 @@ typings
 **/DVEfiles/
 **/inter.vpd
 **/elabMhIdDidWork.txt
+tests/test-progs/imcflow/mmio_communication_test

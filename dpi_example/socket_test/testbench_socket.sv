@@ -68,21 +68,27 @@ module testbench_socket;
 
                 // Process the transaction
                 if (is_write) begin
-                    // Write operation
-                    int word_addr = addr >> 2; // Convert byte address to word address
-                    $display("[SV] Processing WRITE: addr=0x%08x (word %0d), data=0x%08x",
+                    // Write operation - extract word address from byte address
+                    // Use bit slicing to avoid SystemVerilog operator issues with DPI variables
+                    automatic logic [31:0] addr_local = addr;
+                    automatic logic [11:0] byte_offset = addr_local[11:0]; // Lower 12 bits (4KB range)
+                    automatic int unsigned word_addr = {20'b0, byte_offset[11:2]}; // Bits [11:2] for word index
+
+                    $display("[SV] Processing WRITE: addr=0x%08x, word=%0d, data=0x%08x",
                              addr, word_addr, data);
                     if (word_addr < 1024) begin
                         memory[word_addr] = data;
-                        $display("[SV] Write complete!");
                     end else begin
                         $display("[SV] WARNING: Address out of bounds");
                     end
                 end else begin
-                    // Read operation
-                    int word_addr = addr >> 2;
-                    logic [31:0] read_data;
-                    $display("[SV] Processing READ: addr=0x%08x (word %0d)", addr, word_addr);
+                    // Read operation - extract word address from byte address
+                    automatic logic [31:0] addr_local = addr;
+                    automatic logic [11:0] byte_offset = addr_local[11:0]; // Lower 12 bits (4KB range)
+                    automatic int unsigned word_addr = {20'b0, byte_offset[11:2]}; // Bits [11:2] for word index
+                    automatic logic [31:0] read_data;
+
+                    $display("[SV] Processing READ: addr=0x%08x, word=%0d", addr, word_addr);
                     if (word_addr < 1024) begin
                         read_data = memory[word_addr];
                     end else begin

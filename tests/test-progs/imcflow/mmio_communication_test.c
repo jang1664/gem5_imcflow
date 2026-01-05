@@ -28,18 +28,26 @@ int main() {
 
     // Test 1: Write some data to VCS
     printf("--- Test 1: Writing data to VCS ---\n");
-    mmio_write(0x0000, 0xDEADBEEF);
-    mmio_write(0x0004, 0xCAFEBABE);
-    mmio_write(0x0008, 0x12345678);
-    mmio_write(0x000C, 0xABCDEF00);
+    mmio_write(0x0500, 0xDEADBEEF);
+    mmio_write(0x0504, 0xCAFEBABE);
+    mmio_write(0x0508, 0x12345678);
+    mmio_write(0x050C, 0xABCDEF00);
+    mmio_write(0x0510, 0x0BADF00D);
+    mmio_write(0x0514, 0xFEEDC0DE);
+    mmio_write(0x0518, 0xB16B00B5);
+    mmio_write(0x051C, 0xDEADC0DE);
     printf("\n");
 
     // Test 2: Read data from VCS
     printf("--- Test 2: Reading data from VCS ---\n");
-    uint32_t val1 = mmio_read(0x0000);
-    uint32_t val2 = mmio_read(0x0004);
-    uint32_t val3 = mmio_read(0x0008);
-    uint32_t val4 = mmio_read(0x000C);
+    uint32_t val1 = mmio_read(0x0500);
+    uint32_t val2 = mmio_read(0x0504);
+    uint32_t val3 = mmio_read(0x0508);
+    uint32_t val4 = mmio_read(0x050C);
+    uint32_t val5 = mmio_read(0x0510);
+    uint32_t val6 = mmio_read(0x0514);
+    uint32_t val7 = mmio_read(0x0518);
+    uint32_t val8 = mmio_read(0x051C);
     printf("\n");
 
     // Test 3: Verify read values
@@ -48,6 +56,10 @@ int main() {
     printf("Read value 2: 0x%08x %s\n", val2, (val2 == 0xCAFEBABE) ? "✓" : "✗");
     printf("Read value 3: 0x%08x %s\n", val3, (val3 == 0x12345678) ? "✓" : "✗");
     printf("Read value 4: 0x%08x %s\n", val4, (val4 == 0xABCDEF00) ? "✓" : "✗");
+    printf("Read value 5: 0x%08x %s\n", val5, (val5 == 0x0BADF00D) ? "✓" : "✗");
+    printf("Read value 6: 0x%08x %s\n", val6, (val6 == 0xFEEDC0DE) ? "✓" : "✗");
+    printf("Read value 7: 0x%08x %s\n", val7, (val7 == 0xB16B00B5) ? "✓" : "✗");
+    printf("Read value 8: 0x%08x %s\n", val8, (val8 == 0xDEADC0DE) ? "✓" : "✗");
     printf("\n");
 
     // Test 4: Mixed read/write pattern
