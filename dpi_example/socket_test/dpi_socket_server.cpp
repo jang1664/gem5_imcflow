@@ -160,8 +160,12 @@ int socket_recv_transaction(int* is_write, unsigned int* addr, unsigned int* dat
     *addr = txn.addr;
     *data = txn.data;
 
-    printf("[DPI-C] Received %s: addr=0x%08x, data=0x%08x\n",
-           txn.is_write ? "WRITE" : "READ", txn.addr, txn.data);
+    if (txn.is_write) {
+        printf("[DPI-C] Received WRITE: addr=0x%08x, data=0x%08x\n",
+               txn.addr, txn.data);
+    } else {
+        printf("[DPI-C] Received READ: addr=0x%08x\n", txn.addr);
+    }
 
     return 0;
 }
