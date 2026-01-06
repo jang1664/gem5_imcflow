@@ -2,6 +2,29 @@
 
 DPI-C integrated testbench for running ImcFlow RTL simulations with gem5 via socket communication.
 
+## Status at a Glance
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **Phase 1: MMIO Communication** | ✅ **COMPLETE** | gem5 ↔ VCS socket working |
+| **Phase 2: Controller Registers** | ⏳ TODO | Control ImcFlow from gem5 |
+| **Phase 3: Memory Integration** | ⏳ TODO | IMEM/DMEM access |
+| **Phase 4: TVM Workloads** | ⏳ TODO | Run neural networks |
+| **Phase 5: Full Validation** | ⏳ TODO | Production ready |
+
+## Quick Start
+
+```bash
+# Run the MMIO communication test
+./test_mmio_communication.sh
+
+# The script will:
+# 1. Compile VCS RTL simulation (if needed) → build/
+# 2. Start VCS server on port 9999
+# 3. Run gem5 with MMIO test binary
+# 4. Show results and save logs to logs/
+```
+
 ## Overview
 
 This directory contains the infrastructure to replace the previous CPU testbench model (`sys_test.c` in fsim) with gem5, enabling complete system-level simulation with actual RTL hardware.
@@ -24,126 +47,209 @@ SystemVerilog Testbench
 ImcFlow RTL (imcflow_with_axi.sv)
 ```
 
-## Implementation Status
+## How test_mmio_communication.sh Works
 
-Based on recent commits (gem5 repository):
+### Current Test (MMIO Communication Verification)
 
-### ✅ Completed
-- **Socket Communication Infrastructure** (commit 7b0b9e8b0b)
-  - Fixed struct alignment between gem5 and VCS
-  - Corrected address calculation in SystemVerilog DPI
-  - 12-byte transaction protocol with proper padding
+**Test Binary**: `mmio_communication_test.c` from `tests/test-progs/imcflow/`
 
-- **ImcflowPIOSocket Device** (commits 6a1510b6db, f93e226a12)
-  - C++ implementation with TCP socket client
-  - Python configuration module
-  - MMIO address range: 0x80000000 - 0x80041000 (260KB)
+**What it tests**:
+1. **Write 8 values** to RTL via MMIO (offsets 0x500-0x51C)
+   - Values: 0xDEADBEEF, 0xCAFEBABE, 0x12345678, etc.
+2. **Read 8 values** back from RTL memory
+3. **Verify** all values match (write-then-read echo test)
+4. **Mixed operations** - alternating write/read to test bidirectional flow
 
-- **DPI-C Server Implementation** (commit 7b0b9e8b0b)
-  - Socket server functions in `dpi_socket_server.cpp`
-  - Testbench integration in `testbench_socket.sv`
-  - Memory model with read/write operations
+**Flow Diagram**:
+```
+gem5 (x86 CPU)
+    ↓ MMIO write/read to 0x80000000
+ImcflowPIOSocket (C++ device in gem5)
+    ↓ TCP socket (127.0.0.1:9999)
+DPI-C Socket Server (dpi_socket_server.cpp)
+    ↓ SystemVerilog DPI-C functions
+testbench_imcflow_gem5.sv
+    ↓ AXI4 transactions
+ImcFlow RTL (imcflow_with_axi.sv)
+    ↓ TCDM memory interface
+On-chip memory arrays (read/write data)
+```
 
-- **Error Handling** (commit b60cdf592e)
-  - Fail-fast behavior on VCS connection failures
-  - Proper panic() on socket errors for reliable co-simulation
+**Expected Output**:
+```
+--- Test 1: Writing data to VCS ---
+[gem5 → VCS] WRITE: offset=0x0500, value=0xdeadbeef
+...
 
-- **Performance Optimization** (commit 9f7e98bae5)
-  - Support for gem5.fast for faster simulation
-  - Automatic fallback to gem5.opt if fast version unavailable
+--- Test 2: Reading data from VCS ---
+[VCS → gem5] READ:  offset=0x0500, value=0xdeadbeef
+...
 
-### 🔄 Previous Functional Simulation (Reference)
+--- Test 3: Verification ---
+Read value 1: 0xdeadbeef ✓
+...
+✓ TEST PASSED
+```
 
-Location: `~/project/imcflow/pmap/modules/top/fsim/imcflow_with_axi/`
+### ✅ What Works Now (Phase 1 Complete)
 
-**Key Components**:
-- `sys_test.c` - ARM CPU testbench (being replaced by gem5)
-- `tb_imcflow_with_axi.sv` - AXI testbench wrapper
-- `Makefile` - VCS compilation with AXI/TCDM configuration
-- RTL file lists: `rtl.f`, `tb.f`, `tech.f`
+- ✅ VCS RTL compilation with DPI-C socket server
+- ✅ gem5 ↔ VCS socket communication (port 9999)
+- ✅ MMIO transactions (write/read) through RTL
+- ✅ AXI4 protocol conversion in testbench
+- ✅ Data verification (echo test passes)
+- ✅ Organized directory structure (`build/`, `logs/`)
+- ✅ Automated test script with logging
 
-**Migration Path**: Replace `sys_test.c` CPU model with gem5 + DPI-C socket bridge
+## Technical Details
 
-## RTL Source Location
+### Transaction Protocol
 
-ImcFlow RTL modules: `~/project/imcflow/pmap/modules/top/source/`
-
-**Key RTL Files**:
-- `imcflow_with_axi.sv` - Top-level module with AXI interface
-- `imcflow_impl.sv` - Core ImcFlow implementation
-- `imcflow.sv` - Main accelerator logic
-- `controller.sv` - State machine controller
-- `axi/` - AXI protocol modules
-- `tcdm/` - TCDM memory interface
-- `tb/` - Testbench modules
-
-## Transaction Protocol
-
-**12-byte Binary Protocol** (fixed in commit 7b0b9e8b0b):
+**12-byte Binary Protocol** between gem5 and VCS:
 ```c
 struct Transaction {
     uint8_t is_write;    // 1 = write, 0 = read
-    uint8_t padding[3];  // Compiler alignment padding
-    uint32_t addr;       // Byte address (offset from base)
-    uint32_t data;       // Data word (write) or response (read)
+    uint8_t padding[3];  // Compiler alignment
+    uint32_t addr;       // Byte address (offset from MMIO base)
+    uint32_t data;       // Data word
 };
 ```
 
-**Address Calculation**:
-```systemverilog
-// Extract word address from byte address using bit slicing
-logic [11:0] byte_offset = addr[11:0];        // Lower 12 bits (4KB range)
-int unsigned word_addr = {20'b0, byte_offset[11:2]}; // Bits [11:2]
-```
+### DPI-C Interface
 
-## DPI-C Interface Functions
-
-Located in `~/project/imcflow/pmap/ISA_sim/gem5/dpi_example/socket_test/dpi_socket_server.cpp`
+SystemVerilog testbench uses DPI-C functions from `dpi_socket_server.cpp`:
 
 ```c
-int socket_server_init(int port);          // Initialize TCP server
-int socket_server_accept();                 // Accept client connection (blocking)
-int socket_has_transaction();               // Check for pending data (non-blocking)
-int socket_recv_transaction(output int is_write,
-                           output int addr,
-                           output int data);  // Receive transaction
-int socket_send_response(input int data);   // Send read response
-void socket_server_close();                 // Cleanup
+socket_server_init(9999)           // Initialize server
+socket_server_accept()             // Wait for gem5
+socket_has_transaction()           // Poll for data
+socket_recv_transaction(...)       // Receive MMIO request
+socket_send_response(data)         // Send read response
+socket_server_close()              // Cleanup
 ```
 
-## Next Steps for RTL Integration
+### RTL Files
 
-### Phase 1: Adapt DPI Testbench for ImcFlow RTL
-1. Copy `testbench_socket.sv` template to rtl_runner
-2. Replace simple memory model with ImcFlow AXI driver
-3. Map MMIO transactions to AXI4 protocol
-4. Connect to `imcflow_with_axi` RTL module
+ImcFlow RTL: `~/project/imcflow/pmap/modules/top/source/`
+- `imcflow_with_axi.sv` - Top-level AXI wrapper
+- `imcflow_impl.sv` - Core implementation
+- File lists: `rtl.f`, `tb.f`, `tech.f`
 
-### Phase 2: Create Compilation Scripts
-1. Adapt Makefile from `fsim/imcflow_with_axi/`
-2. Create RTL file list including:
-   - ImcFlow RTL sources (`rtl.f`)
-   - AXI modules
-   - DPI testbench (`testbench_imcflow_gem5.sv`)
-3. Add VCS compilation flags for DPI-C
+## Remaining Phases
 
-### Phase 3: Integration Testing
-1. Start with simple register access tests
-2. Progress to instruction/data memory operations
-3. Verify full TVM workload execution
-4. Compare results with Python functional model
+### Phase 2: Controller Register Interface (TODO)
 
-### Phase 4: Runner Script
-1. Create `run.sh` similar to `py_runner/run.sh`
-2. Launch VCS simulation in background
-3. Run gem5 with TVM binary
-4. Collect and verify results
+**Goal**: Enable gem5 to configure and control ImcFlow accelerator
 
-## Reference Documentation
+**Tasks**:
+- [ ] Map ImcFlow controller registers to MMIO addresses
+- [ ] Implement register write/read in testbench
+- [ ] Test register configuration from gem5
+  - Start/stop control
+  - Status polling
+  - Configuration registers
 
-- gem5 Socket Implementation: `~/project/imcflow/pmap/ISA_sim/gem5/docs/imcflow/`
-- DPI Example: `~/project/imcflow/pmap/ISA_sim/gem5/dpi_example/socket_test/`
-- Previous Testbench: `~/project/imcflow/pmap/modules/top/source/tb/tb_imcflow_with_axi.sv`
+**Test**: Write a simple test that configures ImcFlow and reads status
+
+---
+
+### Phase 3: Memory Access Integration (TODO)
+
+**Goal**: Allow ImcFlow to access instruction/data memory
+
+**Current State**: MMIO transactions work, but ImcFlow needs access to:
+- Instruction memory (IMEM) - program for IMC cores
+- Data memory (DMEM) - input/output data
+
+**Tasks**:
+- [ ] Understand ImcFlow memory map and requirements
+- [ ] Implement memory loading mechanism (IMEM/DMEM)
+- [ ] Test memory read/write from ImcFlow perspective
+- [ ] Verify memory coherency
+
+**Reference**: Check `py_runner` for memory initialization patterns
+
+---
+
+### Phase 4: TVM Workload Execution (TODO)
+
+**Goal**: Run actual TVM-generated workloads on ImcFlow RTL
+
+**Tasks**:
+- [ ] Port TVM binary execution from `py_runner` to `rtl_runner`
+- [ ] Implement workload loading sequence:
+  1. Load instructions to IMEM
+  2. Load input data to DMEM
+  3. Configure controller
+  4. Start execution
+  5. Wait for completion
+  6. Read results
+- [ ] Create test with simple TVM workload (e.g., `one_conv`)
+- [ ] Verify output matches Python functional model
+
+**Test Binary**: Use existing TVM binaries from `~/project/tvm/tvm_practice/test_imcflow/`
+
+---
+
+### Phase 5: Full Integration & Validation (TODO)
+
+**Goal**: Production-ready RTL co-simulation
+
+**Tasks**:
+- [ ] Performance profiling (cycle counts, timing)
+- [ ] Waveform debugging support (Verdi integration)
+- [ ] Automated regression testing
+- [ ] Compare RTL vs Python model results
+- [ ] Documentation and examples
+
+**Success Criteria**:
+- ✓ TVM workloads run successfully on RTL
+- ✓ Results match Python functional model
+- ✓ Performance metrics are accurate
+
+## Directory Structure
+
+```
+rtl_runner/
+├── build/                          # VCS build artifacts (generated)
+│   ├── simv_imcflow_gem5          # Compiled RTL simulator
+│   ├── csrc/                      # C++ intermediates
+│   └── *.daidir/                  # VCS database
+│
+├── logs/                          # Simulation logs (generated)
+│   ├── vcs_sim.log                # RTL simulation output
+│   └── gem5_output.log            # gem5 execution output
+│
+├── binaries/                      # Test binaries (generated)
+├── m5out/                         # gem5 stats/outputs (generated)
+├── test_outputs/                  # Test results (generated)
+│
+├── testbench_imcflow_gem5.sv     # Main SystemVerilog testbench
+├── Makefile                       # VCS compilation
+├── rtl.f, tb.f, tech.f           # File lists for VCS
+├── test_mmio_communication.sh    # MMIO test script
+├── run.sh                         # Generic runner (for TVM)
+└── README.md                      # This file
+```
+
+**Note**: Directories marked *(generated)* are created automatically and ignored by git.
+
+## Commands
+
+```bash
+# Compile RTL simulation
+make compile                       # → build/simv_imcflow_gem5
+
+# Clean build artifacts
+make clean                         # Clean logs
+make clean_all                     # Clean everything
+
+# Run MMIO communication test
+./test_mmio_communication.sh       # Full test with logging
+
+# Manual VCS run (advanced)
+build/simv_imcflow_gem5            # Start VCS server manually
+```
 
 ## Key Differences from py_runner
 
@@ -152,13 +258,25 @@ void socket_server_close();                 // Cleanup
 | Backend | Python functional model | VCS RTL simulation |
 | Device | ImcflowPIO | ImcflowPIOSocket |
 | Communication | Direct function calls | TCP socket (port 9999) |
-| Latency | Minimal | Includes RTL cycle accuracy |
-| Startup | Instantaneous | VCS initialization required |
+| Accuracy | Functional only | Cycle-accurate RTL |
+| Speed | Very fast (~seconds) | Slow (~minutes to hours) |
 
-## Recent Bug Fixes (from git log)
+## Reference Documentation
 
-1. **Struct Alignment** (7b0b9e8b0b): Fixed padding causing address scrambling
-2. **Address Calculation** (7b0b9e8b0b): Changed to bit slicing for DPI compatibility
-3. **Error Handling** (b60cdf592e): Reverted to panic() for connection failures
-4. **Performance** (9f7e98bae5): Added gem5.fast support
-5. **Logging** (c3c67060a0): Improved DPI-C READ message formatting
+- gem5 Socket Implementation: `~/project/imcflow/pmap/ISA_sim/gem5/docs/imcflow/`
+- DPI Example: `~/project/imcflow/pmap/ISA_sim/gem5/dpi_example/socket_test/`
+- Previous Testbench: `~/project/imcflow/pmap/modules/top/source/tb/tb_imcflow_with_axi.sv`
+
+## Troubleshooting
+
+**VCS won't connect to gem5:**
+- Check VCS is listening: `tail -f logs/vcs_sim.log`
+- Verify port 9999 is not in use: `netstat -an | grep 9999`
+
+**Compilation errors:**
+- Ensure `IMCFLOW_DIR` environment variable is set
+- Check RTL file paths in `rtl.f`, `tb.f`, `tech.f`
+
+**Test hangs:**
+- Check both gem5 and VCS logs in `logs/` directory
+- VCS may need more initialization time (increase sleep in test script)

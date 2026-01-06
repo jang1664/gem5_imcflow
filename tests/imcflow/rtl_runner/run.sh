@@ -5,6 +5,10 @@
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
 
+# Directory structure
+BUILD_DIR="build"
+LOGS_DIR="logs"
+
 BINARY=${1:-"test_imcflow"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
@@ -15,15 +19,14 @@ echo "Test Name: $TEST_NAME"
 echo "GDB Mode: $GDB"
 echo ""
 
-# Create binaries directory if it doesn't exist
+# Create directories
 mkdir -p binaries
+mkdir -p $LOGS_DIR
+mkdir -p test_outputs/$TEST_NAME
 
 # Copy TVM binary
 cp ~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/tvm_host_runner binaries/
 cp -r ~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/mlf .
-
-# Create output directory
-mkdir -p test_outputs/$TEST_NAME
 
 # Set TVM Python path
 export PYTHONPATH=$PYTHONPATH:/root/project/tvm/tvm_practice/tvm_env/lib/python3.10/site-packages
@@ -38,7 +41,7 @@ else
 fi
 
 # Compile RTL simulation if needed
-if [ ! -f "simv_imcflow_gem5" ]; then
+if [ ! -f "$BUILD_DIR/simv_imcflow_gem5" ]; then
     echo ""
     echo "=== Compiling RTL simulation with VCS ==="
     make compile
@@ -52,7 +55,8 @@ fi
 # Start VCS simulation in background
 echo ""
 echo "=== Starting VCS RTL simulation (waiting on port 9999) ==="
-./simv_imcflow_gem5 > vcs_sim.log 2>&1 &
+echo "VCS log: $LOGS_DIR/vcs_sim.log"
+$BUILD_DIR/simv_imcflow_gem5 > $LOGS_DIR/vcs_sim.log 2>&1 &
 VCS_PID=$!
 echo "VCS simulation started with PID: $VCS_PID"
 
@@ -64,7 +68,7 @@ sleep 5
 if ! kill -0 $VCS_PID 2>/dev/null; then
     echo "ERROR: VCS simulation terminated unexpectedly"
     echo "Last 20 lines of VCS log:"
-    tail -20 vcs_sim.log
+    tail -20 $LOGS_DIR/vcs_sim.log
     exit 1
 fi
 
@@ -98,13 +102,17 @@ echo "gem5 exit code: $GEM5_EXIT"
 echo "VCS exit code: $VCS_EXIT"
 echo ""
 echo "Logs:"
-echo "  VCS simulation: vcs_sim.log"
+echo "  VCS simulation: $LOGS_DIR/vcs_sim.log"
 echo "  gem5 output: m5out/terminal (or in current terminal)"
+echo ""
+echo "Build artifacts:"
+echo "  VCS binary: $BUILD_DIR/simv_imcflow_gem5"
+echo "  Build files: $BUILD_DIR/"
 echo ""
 
 # Display last part of VCS log for summary
 echo "=== VCS Simulation Summary (last 30 lines) ==="
-tail -30 vcs_sim.log
+tail -30 $LOGS_DIR/vcs_sim.log
 
 if [ $GEM5_EXIT -eq 0 ] && [ $VCS_EXIT -eq 0 ]; then
     echo ""

@@ -1,1 +1,32 @@
-compile
+# Build artifacts
+build/
+*.daidir/
+
+# Logs
+logs/
+*.log
+
+# gem5 outputs
+m5out/
+
+# Test outputs
+test_outputs/
+
+# VCS files
+*.key
+*.history
+*.vpd
+*.fsdb*
+verdi_config_file
+vc_hdrs.h
+
+# Binaries
+binaries/
+
+# Temporary files
+*.swp
+*.dump
+core.*
+transcript
+*.wlf
+*.vstf
