@@ -1,8 +1,14 @@
 Import('*')
 
-# Build the imcflow PIO device with pybind11
+# Build the imcflow PIO devices
+# - ImcflowPIO: Original pybind11-based device for Python simulator
+# - ImcflowPIOSocket: Socket-based device for VCS co-simulation
 
 SimObject('ImcflowPIO.py', sim_objects=['ImcflowPIO'])
+SimObject('ImcflowPIOSocket.py', sim_objects=['ImcflowPIOSocket'])
 
 Source('imcflow_pio.cc')
-DebugFlag("ImcflowPIO", "Imcflow PIO device debugging")
+Source('imcflow_pio_socket.cc')
+
+DebugFlag("ImcflowPIO", "Imcflow PIO device debugging (Python mode)")
+DebugFlag("ImcflowPIOSocket", "Imcflow PIO Socket device debugging (VCS mode)")
