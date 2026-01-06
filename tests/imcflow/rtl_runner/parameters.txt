@@ -1,7 +1,0 @@
-// ImcFlow RTL Co-Simulation Parameters
-// This file can be used to override module parameters during VCS compilation
-// Format: module_name.parameter_name = value
-//
-// Example:
-// testbench_imcflow_gem5.MaxCycle = 8000000
-// testbench_imcflow_gem5.CyclTime = 10ns

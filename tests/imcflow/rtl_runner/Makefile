@@ -46,7 +46,7 @@ compile: setup clean_all ## Compile the RTL co-simulation (usage: make compile D
 	-assert svaext \
 	+warn=noUII-L \
 	+warn=noIDTS \
-	+lint=TFIPC-L \
+	+lint=noTFIPC-L \
 	+lint=PCWM \
 	+delay_mode_zero \
 	-debug_region=cell \

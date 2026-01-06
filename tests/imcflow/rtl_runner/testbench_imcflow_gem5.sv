@@ -116,65 +116,6 @@ module testbench_imcflow_gem5
   // ==================================================================
   // AXI Master for Socket Transactions
   // ==================================================================
-  AXI_BUS #(
-      .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
-      .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-      .AXI_ID_WIDTH  (AXI_ID_WIDTH),
-      .AXI_USER_WIDTH(AXI_USER_WIDTH)
-  ) axi_bus ();
-
-  // AXI signal assignments - connect internal AXI bus to imcflow_with_axi
-  assign axi_awid         = axi_bus.aw_id;
-  assign axi_awaddr       = axi_bus.aw_addr;
-  assign axi_awlen        = axi_bus.aw_len;
-  assign axi_awsize       = axi_bus.aw_size;
-  assign axi_awburst      = axi_bus.aw_burst;
-  assign axi_awlock       = axi_bus.aw_lock;
-  assign axi_awcache      = axi_bus.aw_cache;
-  assign axi_awprot       = axi_bus.aw_prot;
-  assign axi_awqos        = axi_bus.aw_qos;
-  assign axi_awregion     = axi_bus.aw_region;
-  assign axi_awatop       = axi_bus.aw_atop;
-  assign axi_awuser       = axi_bus.aw_user;
-  assign axi_awvalid      = axi_bus.aw_valid;
-  assign axi_bus.aw_ready = axi_awready;
-
-  assign axi_wdata        = axi_bus.w_data;
-  assign axi_wstrb        = axi_bus.w_strb;
-  assign axi_wlast        = axi_bus.w_last;
-  assign axi_wuser        = axi_bus.w_user;
-  assign axi_wvalid       = axi_bus.w_valid;
-  assign axi_bus.w_ready  = axi_wready;
-
-  assign axi_bus.b_id     = axi_bid;
-  assign axi_bus.b_resp   = axi_bresp;
-  assign axi_bus.b_user   = axi_buser;
-  assign axi_bus.b_valid  = axi_bvalid;
-  assign axi_bready       = axi_bus.b_ready;
-
-  assign axi_arid         = axi_bus.ar_id;
-  assign axi_araddr       = axi_bus.ar_addr;
-  assign axi_arlen        = axi_bus.ar_len;
-  assign axi_arsize       = axi_bus.ar_size;
-  assign axi_arburst      = axi_bus.ar_burst;
-  assign axi_arlock       = axi_bus.ar_lock;
-  assign axi_arcache      = axi_bus.ar_cache;
-  assign axi_arprot       = axi_bus.ar_prot;
-  assign axi_arqos        = axi_bus.ar_qos;
-  assign axi_arregion     = axi_bus.ar_region;
-  assign axi_aruser       = axi_bus.ar_user;
-  assign axi_arvalid      = axi_bus.ar_valid;
-  assign axi_bus.ar_ready = axi_arready;
-
-  assign axi_bus.r_id     = axi_rid;
-  assign axi_bus.r_data   = axi_rdata;
-  assign axi_bus.r_resp   = axi_rresp;
-  assign axi_bus.r_last   = axi_rlast;
-  assign axi_bus.r_user   = axi_ruser;
-  assign axi_bus.r_valid  = axi_rvalid;
-  assign axi_rready       = axi_bus.r_ready;
-
-  // AXI driver for stimulus
   AXI_BUS_DV #(
       .AXI_ADDR_WIDTH(AXI_ADDR_WIDTH),
       .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
@@ -182,8 +123,56 @@ module testbench_imcflow_gem5
       .AXI_USER_WIDTH(AXI_USER_WIDTH)
   ) axi_master_dv (clk);
 
-  `AXI_ASSIGN(axi_master_dv, axi_bus);
+  // AXI signal assignments - connect axi_master_dv to imcflow_with_axi wire ports
+  assign axi_awid         = axi_master_dv.aw_id;
+  assign axi_awaddr       = axi_master_dv.aw_addr;
+  assign axi_awlen        = axi_master_dv.aw_len;
+  assign axi_awsize       = axi_master_dv.aw_size;
+  assign axi_awburst      = axi_master_dv.aw_burst;
+  assign axi_awlock       = axi_master_dv.aw_lock;
+  assign axi_awcache      = axi_master_dv.aw_cache;
+  assign axi_awprot       = axi_master_dv.aw_prot;
+  assign axi_awqos        = axi_master_dv.aw_qos;
+  assign axi_awregion     = axi_master_dv.aw_region;
+  assign axi_awatop       = axi_master_dv.aw_atop;
+  assign axi_awuser       = axi_master_dv.aw_user;
+  assign axi_awvalid      = axi_master_dv.aw_valid;
+  assign axi_master_dv.aw_ready = axi_awready;
 
+  assign axi_wdata        = axi_master_dv.w_data;
+  assign axi_wstrb        = axi_master_dv.w_strb;
+  assign axi_wlast        = axi_master_dv.w_last;
+  assign axi_wuser        = axi_master_dv.w_user;
+  assign axi_wvalid       = axi_master_dv.w_valid;
+  assign axi_master_dv.w_ready  = axi_wready;
+
+  assign axi_master_dv.b_id     = axi_bid;
+  assign axi_master_dv.b_resp   = axi_bresp;
+  assign axi_master_dv.b_user   = axi_buser;
+  assign axi_master_dv.b_valid  = axi_bvalid;
+  assign axi_bready       = axi_master_dv.b_ready;
+
+  assign axi_arid         = axi_master_dv.ar_id;
+  assign axi_araddr       = axi_master_dv.ar_addr;
+  assign axi_arlen        = axi_master_dv.ar_len;
+  assign axi_arsize       = axi_master_dv.ar_size;
+  assign axi_arburst      = axi_master_dv.ar_burst;
+  assign axi_arlock       = axi_master_dv.ar_lock;
+  assign axi_arcache      = axi_master_dv.ar_cache;
+  assign axi_arprot       = axi_master_dv.ar_prot;
+  assign axi_arqos        = axi_master_dv.ar_qos;
+  assign axi_arregion     = axi_master_dv.ar_region;
+  assign axi_aruser       = axi_master_dv.ar_user;
+  assign axi_arvalid      = axi_master_dv.ar_valid;
+  assign axi_master_dv.ar_ready = axi_arready;
+
+  assign axi_master_dv.r_id     = axi_rid;
+  assign axi_master_dv.r_data   = axi_rdata;
+  assign axi_master_dv.r_resp   = axi_rresp;
+  assign axi_master_dv.r_last   = axi_rlast;
+  assign axi_master_dv.r_user   = axi_ruser;
+  assign axi_master_dv.r_valid  = axi_rvalid;
+  assign axi_rready       = axi_master_dv.r_ready;
   typedef axi_test::axi_driver #(
       .AW(AXI_ADDR_WIDTH),
       .DW(AXI_DATA_WIDTH),
@@ -197,31 +186,31 @@ module testbench_imcflow_gem5
 
   // AXI transaction beats
   axi_test::axi_ax_beat #(
-      .AW(AXI_ADDR_WIDTH),
-      .IW(AXI_ID_WIDTH),
-      .UW(AXI_USER_WIDTH)
+      .AW(int'(AXI_ADDR_WIDTH)),
+      .IW(int'(AXI_ID_WIDTH)),
+      .UW(int'(AXI_USER_WIDTH))
   ) write_ax_beat = new();
 
   axi_test::axi_w_beat #(
-      .DW(AXI_DATA_WIDTH),
-      .UW(AXI_USER_WIDTH)
+      .DW(int'(AXI_DATA_WIDTH)),
+      .UW(int'(AXI_USER_WIDTH))
   ) w_beat = new();
 
   axi_test::axi_b_beat #(
-      .IW(AXI_ID_WIDTH),
-      .UW(AXI_USER_WIDTH)
+      .IW(int'(AXI_ID_WIDTH)),
+      .UW(int'(AXI_USER_WIDTH))
   ) b_beat = new();
 
   axi_test::axi_ax_beat #(
-      .AW(AXI_ADDR_WIDTH),
-      .IW(AXI_ID_WIDTH),
-      .UW(AXI_USER_WIDTH)
+      .AW(int'(AXI_ADDR_WIDTH)),
+      .IW(int'(AXI_ID_WIDTH)),
+      .UW(int'(AXI_USER_WIDTH))
   ) read_ax_beat = new();
 
   axi_test::axi_r_beat #(
-      .DW(AXI_DATA_WIDTH),
-      .UW(AXI_USER_WIDTH),
-      .IW(AXI_ID_WIDTH)
+      .DW(int'(AXI_DATA_WIDTH)),
+      .UW(int'(AXI_USER_WIDTH)),
+      .IW(int'(AXI_ID_WIDTH))
   ) r_beat = new();
 
   // ==================================================================
