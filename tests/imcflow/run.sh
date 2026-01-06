@@ -8,6 +8,9 @@ BINARY=${1:-"test_imcflow"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 
+# Create binaries directory if it doesn't exist
+mkdir -p binaries
+
 cp ~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/tvm_host_runner binaries/
 cp -r ~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/mlf .
 
