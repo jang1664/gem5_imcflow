@@ -1,7 +1,2 @@
-binaries
 logs
 *.log
-logs.*/
-m5out
-mlf
-test_outputs/*
