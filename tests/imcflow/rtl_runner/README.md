@@ -1,35 +1,29 @@
 # ImcFlow RTL Co-Simulation Runner
 
-DPI-C integrated testbench for running ImcFlow RTL simulations with gem5 via socket communication.
-
-## Status at a Glance
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| **Phase 1: MMIO Communication** | ✅ **COMPLETE** | gem5 ↔ VCS socket working |
-| **Phase 2: Controller Registers** | ⏳ TODO | Control ImcFlow from gem5 |
-| **Phase 3: Memory Integration** | ⏳ TODO | IMEM/DMEM access |
-| **Phase 4: TVM Workloads** | ⏳ TODO | Run neural networks |
-| **Phase 5: Full Validation** | ⏳ TODO | Production ready |
+Run ImcFlow RTL simulations with gem5 via socket communication. Execute TVM-compiled neural network workloads on cycle-accurate RTL hardware.
 
 ## Quick Start
 
-```bash
-# Run the MMIO communication test
-./test_mmio_communication.sh
+### Run TVM Workload on RTL
 
-# The script will:
-# 1. Compile VCS RTL simulation (if needed) → build/
-# 2. Start VCS server on port 9999
-# 3. Run gem5 with MMIO test binary
-# 4. Show results and save logs to logs/
+```bash
+./run.sh tvm_host_runner no one_conv
 ```
 
-## Overview
+This will:
+1. Compile VCS RTL simulation (if needed) → `build/`
+2. Copy TVM binaries and MLF from TVM build directory
+3. Start VCS RTL server on port 9999
+4. Run gem5 with TVM binary executing on ImcFlow RTL
+5. Save logs to `logs/` and waveforms to `imcflow_gem5.fsdb`
 
-This directory contains the infrastructure to replace the previous CPU testbench model (`sys_test.c` in fsim) with gem5, enabling complete system-level simulation with actual RTL hardware.
+### Run MMIO Communication Test
 
-**Goal**: Integrate ImcFlow RTL (from `~/project/imcflow/pmap/modules/top/source/`) with gem5 to create a full system co-simulation environment.
+```bash
+./test_mmio_communication.sh
+```
+
+Verifies basic gem5 ↔ VCS socket communication with MMIO read/write operations.
 
 ## Architecture
 
@@ -47,35 +41,59 @@ SystemVerilog Testbench
 ImcFlow RTL (imcflow_with_axi.sv)
 ```
 
-## How test_mmio_communication.sh Works
+## Usage
 
-### Current Test (MMIO Communication Verification)
+### Running TVM Workloads
 
-**Test Binary**: `mmio_communication_test.c` from `tests/test-progs/imcflow/`
-
-**What it tests**:
-1. **Write 8 values** to RTL via MMIO (offsets 0x500-0x51C)
-   - Values: 0xDEADBEEF, 0xCAFEBABE, 0x12345678, etc.
-2. **Read 8 values** back from RTL memory
-3. **Verify** all values match (write-then-read echo test)
-4. **Mixed operations** - alternating write/read to test bidirectional flow
-
-**Flow Diagram**:
-```
-gem5 (x86 CPU)
-    ↓ MMIO write/read to 0x80000000
-ImcflowPIOSocket (C++ device in gem5)
-    ↓ TCP socket (127.0.0.1:9999)
-DPI-C Socket Server (dpi_socket_server.cpp)
-    ↓ SystemVerilog DPI-C functions
-testbench_imcflow_gem5.sv
-    ↓ AXI4 transactions
-ImcFlow RTL (imcflow_with_axi.sv)
-    ↓ TCDM memory interface
-On-chip memory arrays (read/write data)
+**Basic usage:**
+```bash
+./run.sh <binary_name> <gdb_mode> [test_name]
 ```
 
-**Expected Output**:
+**Examples:**
+```bash
+# Run one_conv workload
+./run.sh tvm_host_runner no one_conv
+
+# Run resnet8 with GDB debugging
+./run.sh tvm_host_runner yes resnet8
+
+# Run with custom test name
+./run.sh tvm_host_runner no my_custom_test
+```
+
+**What happens:**
+1. **Copy binaries**: `tvm_host_runner` and `mlf/` from `~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/`
+2. **Compile VCS**: If `build/simv_imcflow_gem5` doesn't exist
+3. **Start VCS**: RTL simulator listening on port 9999
+4. **Run gem5**: Executes TVM binary with `run_imcflow_rtl.py` config
+5. **Cleanup**: Terminates VCS and saves logs
+
+**Output files:**
+```
+logs/
+├── vcs_sim.log          # RTL simulation output
+├── gem5_output.log      # gem5 execution log
+└── fsim_logs/           # Detailed transaction logs (when FSIM enabled)
+m5out/                   # gem5 statistics
+imcflow_gem5.fsdb        # Waveform database (for Verdi)
+test_outputs/<test_name>/ # Test results
+```
+
+### MMIO Communication Test
+
+**Usage:**
+```bash
+./test_mmio_communication.sh
+```
+
+**What it tests:**
+- Write 8 test values to RTL via MMIO (offsets 0x500-0x51C)
+- Read values back and verify correctness
+- Test mixed read/write operations
+- Verify ImcFlow state polling mechanism
+
+**Expected output:**
 ```
 --- Test 1: Writing data to VCS ---
 [gem5 → VCS] WRITE: offset=0x0500, value=0xdeadbeef
@@ -90,16 +108,6 @@ Read value 1: 0xdeadbeef ✓
 ...
 ✓ TEST PASSED
 ```
-
-### ✅ What Works Now (Phase 1 Complete)
-
-- ✅ VCS RTL compilation with DPI-C socket server
-- ✅ gem5 ↔ VCS socket communication (port 9999)
-- ✅ MMIO transactions (write/read) through RTL
-- ✅ AXI4 protocol conversion in testbench
-- ✅ Data verification (echo test passes)
-- ✅ Organized directory structure (`build/`, `logs/`)
-- ✅ Automated test script with logging
 
 ## Technical Details
 
@@ -172,84 +180,79 @@ logs/fsim_logs/
 `endif
 ```
 
+### Polling Mode and Auto-Acknowledgment
+
+**Design Decision**: This testbench uses **polling** instead of interrupt-based synchronization.
+
+**How it works**:
+- gem5 host code polls `STATE_REG_IDX` register until ImcFlow returns to `IDLE`
+- No interrupt handler is present in gem5 syscall-emulation mode
+- ImcFlow RTL still generates `interrupt_o` signals internally
+- **Testbench automatically acknowledges interrupts** to keep RTL state machine healthy
+
+**Auto-Ack Logic** (in `testbench_imcflow_gem5.sv`):
+```systemverilog
+// Auto-acknowledge interrupts one cycle after they are raised
+always @(posedge clk or negedge rstn) begin
+  if (!rstn) begin
+    interrupt_ack_i <= 1'b0;
+    interrupt_o_delayed <= 1'b0;
+  end else begin
+    interrupt_o_delayed <= interrupt_o;
+    // Generate ack pulse when interrupt rises
+    interrupt_ack_i <= interrupt_o && !interrupt_o_delayed;
+  end
+end
+```
+
+**Code Generation**: TVM's `ext_codegen.py` generates polling code when `USE_POLLING = True`:
+- Adds `wait_for_idle()` function to generated kernels
+- Inserts polling after `SET_PROGRAM_CODE` and `SET_RUN_CODE`
+- Set `USE_POLLING = False` to disable polling (interrupt-based flow)
+
+**Why polling instead of interrupts?**
+- gem5 syscall-emulation (SE) mode doesn't support device interrupts
+- Polling is simpler for co-simulation with socket communication
+- Future: Full-system (FS) mode could use real interrupt handling
+
+### Signal Initialization Workarounds
+
+**IMCE sync_reg_data 'x' Values After Reset**:
+
+**Problem**: IMCE modules don't initialize their `syn_reg_data_o` outputs during reset, causing 'x' values in the controller's `sync_reg_data_i[20]` array:
+- Indices **0, 5, 10, 15** → INODE outputs (properly initialized to 0)
+- Indices **1-4, 6-9, 11-14, 16-19** → IMCE outputs (remain 'x')
+
+**Root Cause**: IMCE `syn_reg_data_o` is only driven during flag write operations from the IMCE FSM, not during reset. Since the RTL is taped out, this cannot be fixed.
+
+**Solution**: Testbench forces IMCE `syn_reg_data_o` signals to 0 during reset, then releases them after reset completes:
+```systemverilog
+// Force during reset
+for (int row = 0; row < 4; row++) begin
+  for (int col = 0; col < 4; col++) begin
+    force u_imcflow_with_axi.u_imcflow_impl.core_row[row].core_col[col+1]
+          .imce_node.imce.syn_reg_data_o = '0;
+  end
+end
+
+// Release after reset
+wait(rstn == 1'b1); repeat(10) @(posedge clk);
+for (int row = 0; row < 4; row++) begin
+  for (int col = 0; col < 4; col++) begin
+    release u_imcflow_with_axi.u_imcflow_impl.core_row[row].core_col[col+1]
+            .imce_node.imce.syn_reg_data_o;
+  end
+end
+```
+
+This is safe because these signals are only meaningful after the first flag write operation.
+
 ### RTL Files
 
 ImcFlow RTL: `~/project/imcflow/pmap/modules/top/source/`
 - `imcflow_with_axi.sv` - Top-level AXI wrapper
 - `imcflow_impl.sv` - Core implementation
 - File lists: `rtl.f`, `tb.f`, `tech.f`
-
-## Remaining Phases
-
-### Phase 2: Controller Register Interface (TODO)
-
-**Goal**: Enable gem5 to configure and control ImcFlow accelerator
-
-**Tasks**:
-- [ ] Map ImcFlow controller registers to MMIO addresses
-- [ ] Implement register write/read in testbench
-- [ ] Test register configuration from gem5
-  - Start/stop control
-  - Status polling
-  - Configuration registers
-
-**Test**: Write a simple test that configures ImcFlow and reads status
-
----
-
-### Phase 3: Memory Access Integration (TODO)
-
-**Goal**: Allow ImcFlow to access instruction/data memory
-
-**Current State**: MMIO transactions work, but ImcFlow needs access to:
-- Instruction memory (IMEM) - program for IMC cores
-- Data memory (DMEM) - input/output data
-
-**Tasks**:
-- [ ] Understand ImcFlow memory map and requirements
-- [ ] Implement memory loading mechanism (IMEM/DMEM)
-- [ ] Test memory read/write from ImcFlow perspective
-- [ ] Verify memory coherency
-
-**Reference**: Check `py_runner` for memory initialization patterns
-
----
-
-### Phase 4: TVM Workload Execution (TODO)
-
-**Goal**: Run actual TVM-generated workloads on ImcFlow RTL
-
-**Tasks**:
-- [ ] Port TVM binary execution from `py_runner` to `rtl_runner`
-- [ ] Implement workload loading sequence:
-  1. Load instructions to IMEM
-  2. Load input data to DMEM
-  3. Configure controller
-  4. Start execution
-  5. Wait for completion
-  6. Read results
-- [ ] Create test with simple TVM workload (e.g., `one_conv`)
-- [ ] Verify output matches Python functional model
-
-**Test Binary**: Use existing TVM binaries from `~/project/tvm/tvm_practice/test_imcflow/`
-
----
-
-### Phase 5: Full Integration & Validation (TODO)
-
-**Goal**: Production-ready RTL co-simulation
-
-**Tasks**:
-- [ ] Performance profiling (cycle counts, timing)
-- [ ] Waveform debugging support (Verdi integration)
-- [ ] Automated regression testing
-- [ ] Compare RTL vs Python model results
-- [ ] Documentation and examples
-
-**Success Criteria**:
-- ✓ TVM workloads run successfully on RTL
-- ✓ Results match Python functional model
-- ✓ Performance metrics are accurate
 
 ## Directory Structure
 
@@ -262,9 +265,11 @@ rtl_runner/
 │
 ├── logs/                          # Simulation logs (generated)
 │   ├── vcs_sim.log                # RTL simulation output
-│   └── gem5_output.log            # gem5 execution output
+│   ├── gem5_output.log            # gem5 execution output
+│   └── fsim_logs/                 # Detailed transaction logs
 │
 ├── binaries/                      # Test binaries (generated)
+├── mlf/                           # Model Library Format (generated)
 ├── m5out/                         # gem5 stats/outputs (generated)
 ├── test_outputs/                  # Test results (generated)
 │
@@ -272,7 +277,7 @@ rtl_runner/
 ├── Makefile                       # VCS compilation
 ├── rtl.f, tb.f, tech.f           # File lists for VCS
 ├── test_mmio_communication.sh    # MMIO test script
-├── run.sh                         # Generic runner (for TVM)
+├── run.sh                         # TVM workload runner
 └── README.md                      # This file
 ```
 
@@ -290,6 +295,10 @@ make clean_all                     # Clean everything
 
 # Run MMIO communication test
 ./test_mmio_communication.sh       # Full test with logging
+
+# Run TVM workload on RTL
+./run.sh tvm_host_runner no one_conv     # Run TVM workload
+./run.sh tvm_host_runner yes resnet8     # Run with GDB debugging
 
 # Manual VCS run (advanced)
 build/simv_imcflow_gem5            # Start VCS server manually
@@ -324,3 +333,8 @@ build/simv_imcflow_gem5            # Start VCS server manually
 **Test hangs:**
 - Check both gem5 and VCS logs in `logs/` directory
 - VCS may need more initialization time (increase sleep in test script)
+
+**No FSIM logs generated:**
+- Verify compilation with `-DFSIM` flag in Makefile
+- Check `logs/fsim_logs/` directory is created
+- Look for log files matching module hierarchy names
