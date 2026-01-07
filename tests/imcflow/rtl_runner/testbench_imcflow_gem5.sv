@@ -17,7 +17,7 @@ module testbench_imcflow_gem5
     parameter int unsigned TCDM_BE_WIDTH = imcflow_pkg::IO_STROBE_WIDTH,
 
     parameter int unsigned MaxCycle = 4000000,
-    parameter int unsigned RstCycle = 5,
+    parameter int unsigned RstCycle = 10,
     parameter int unsigned StandByCycles = 5,
     parameter real InputDelayMin = 3.0,
     parameter real InputDelayMax = 5.5,
