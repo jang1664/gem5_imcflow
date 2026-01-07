@@ -93,7 +93,7 @@ module testbench_imcflow_gem5
   wire                      axi_rready;
 
   // Interrupt signals
-  wire interrupt_ack_i;
+  reg  interrupt_ack_i;
   wire interrupt_o;
 
   wire inode_0_state_o;
@@ -289,6 +289,41 @@ module testbench_imcflow_gem5
       .aggregator_err_o(aggregator_err_o),
       .imcflow_reg_access_o(imcflow_reg_access_o)
   );
+
+  // ==================================================================
+  // Automatic Interrupt Acknowledgment for Polling Mode
+  // ==================================================================
+  // DESIGN DECISION: Polling vs Interrupt-based Synchronization
+  //
+  // This testbench uses POLLING mode instead of interrupt-based synchronization:
+  // - gem5 host code polls STATE_REG_IDX until it returns to IDLE
+  // - No interrupt handler is present in the gem5 simulation
+  // - However, imcflow_with_axi RTL still generates interrupt_o signals
+  //
+  // PROBLEM: If interrupt_ack_i is not asserted, the ImcFlow state machine
+  // can enter a bad state waiting for acknowledgment that never comes.
+  //
+  // SOLUTION: Automatically generate interrupt_ack_i one cycle after
+  // interrupt_o is raised. This keeps the RTL state machine healthy while
+  // allowing the host to use polling for synchronization.
+  //
+  // NOTE: If migrating to interrupt-based mode in the future, disable this
+  // auto-ack logic and handle interrupt_ack_i from the host via MMIO.
+  // ==================================================================
+
+  reg interrupt_o_delayed;
+
+  // Auto-acknowledge interrupts one cycle after they are raised
+  always @(posedge clk or negedge rstn) begin
+    if (!rstn) begin
+      interrupt_ack_i <= 1'b0;
+      interrupt_o_delayed <= 1'b0;
+    end else begin
+      interrupt_o_delayed <= interrupt_o;
+      // Generate ack pulse when interrupt rises
+      interrupt_ack_i <= interrupt_o && !interrupt_o_delayed;
+    end
+  end
 
   // ==================================================================
   // Socket Transaction Handling
