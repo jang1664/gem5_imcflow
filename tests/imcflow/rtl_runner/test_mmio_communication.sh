@@ -64,7 +64,8 @@ rm -f $LOGS_DIR/vcs_sim.log $LOGS_DIR/gem5_output.log
 echo "=== Starting VCS RTL simulation ==="
 echo "VCS listening on port 9999..."
 echo "VCS log: $LOGS_DIR/vcs_sim.log"
-$BUILD_DIR/simv_imcflow_gem5 > $LOGS_DIR/vcs_sim.log 2>&1 &
+echo "Waveform: imcflow_gem5.fsdb"
+$BUILD_DIR/simv_imcflow_gem5 +fsdbfile+imcflow_gem5.fsdb +fsdb+autoflush > $LOGS_DIR/vcs_sim.log 2>&1 &
 VCS_PID=$!
 echo "VCS simulation started with PID: $VCS_PID"
 echo ""

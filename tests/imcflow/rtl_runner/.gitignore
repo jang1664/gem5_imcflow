@@ -20,6 +20,10 @@ test_outputs/
 verdi_config_file
 vc_hdrs.h
 
+# verdi files
+verdiLog/
+novas*
+
 # Binaries
 binaries/
 

@@ -32,6 +32,7 @@ setup:
 clean: ## Clean logs and temporary files
 	rm -f ${LOGS_DIR}/*.log
 	rm -f *.key *.history *.swp core.* transcript vsim.wlf vsim_stacktrace.vstf
+	rm -rf verdiLog novas*
 
 clean_all: clean ## Clean all build artifacts and logs
 	rm -rf ${BUILD_DIR}
@@ -86,6 +87,3 @@ help:
 	@echo "  make run                  - Run simulation (waits for gem5)"
 	@echo "  make clean_all            - Clean all build artifacts"
 	@echo ""
-	@echo "Integration with gem5:"
-	@echo "  1. Terminal 1: make run"
-	@echo "  2. Terminal 2: cd ../rtl_runner && ./run_gem5.sh"

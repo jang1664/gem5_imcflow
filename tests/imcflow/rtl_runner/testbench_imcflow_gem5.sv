@@ -93,7 +93,7 @@ module testbench_imcflow_gem5
   wire                      axi_rready;
 
   // Interrupt signals
-  wire interrupt_ack_o;
+  wire interrupt_ack_i;
   wire interrupt_o;
 
   wire inode_0_state_o;
@@ -281,7 +281,7 @@ module testbench_imcflow_gem5
       .axi_rready      (axi_rready),
 
       // Interrupt interface
-      .interrupt_ack_i (interrupt_ack_o),
+      .interrupt_ack_i (interrupt_ack_i),
       .interrupt_o     (interrupt_o),
 
       .inode_0_state_o(inode_0_state_o),
@@ -332,6 +332,11 @@ module testbench_imcflow_gem5
 
   // Main socket server and transaction processing
   initial begin
+    // FSDB waveform dumping for Verdi
+    $fsdbDumpfile("imcflow_gem5.fsdb");
+    $fsdbDumpvars(0, testbench_imcflow_gem5);
+    $fsdbDumpMDA();
+
     $display("=== Starting ImcFlow RTL Co-Simulation with gem5 ===\n");
 
     // Initialize AXI master
