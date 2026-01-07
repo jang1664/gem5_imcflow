@@ -5,6 +5,7 @@
 
 module testbench_imcflow_gem5
   import imcflow_pkg::*;
+  import utils::*;
   #(
     parameter int unsigned AXI_DATA_WIDTH = imcflow_pkg::IO_DATA_WIDTH,
     parameter int unsigned AXI_ADDR_WIDTH = imcflow_pkg::IO_ADDR_WIDTH,
@@ -337,6 +338,11 @@ module testbench_imcflow_gem5
   int no_transaction_count;
   int transaction_received_count = 0;
 
+  // FSIM logging infrastructure
+  utils::FdManager fdm = utils::FdManager::get_inst();
+  int log_fd;
+  string log_file_path = "logs/fsim_logs";
+
   // Task to perform AXI write
   task axi_write_single(input logic [AXI_ADDR_WIDTH-1:0] addr, input logic [AXI_DATA_WIDTH-1:0] data);
     @(posedge clk);
@@ -373,6 +379,23 @@ module testbench_imcflow_gem5
     $fsdbDumpMDA();
 
     $display("=== Starting ImcFlow RTL Co-Simulation with gem5 ===\n");
+
+    // ==================================================================
+    // Initialize FSIM logging infrastructure
+    // ==================================================================
+    // Create log directory and configure FdManager for $fdisplay outputs
+    // When FSIM is defined, ModuleLogger instances in RTL modules will
+    // create log files in logs/fsim_logs/{module_name}.log
+    // ==================================================================
+    $display("[FSIM] Creating log directory: %s", log_file_path);
+    $system({"mkdir -p ", log_file_path});
+    fdm.set_log_file_path(log_file_path);
+    log_fd = $fopen({log_file_path, "/run.log"}, "w");
+    $fdisplay(log_fd, "=== ImcFlow RTL Co-Simulation with gem5 ===");
+    $fdisplay(log_fd, "Timestamp: %0t", $time);
+    $fflush(log_fd);
+    $display("[FSIM] Log files will be created in: %s/", log_file_path);
+    $display("");
 
     // Initialize AXI master
     axi_master_drv.reset_master();

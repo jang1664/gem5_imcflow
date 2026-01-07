@@ -128,6 +128,50 @@ socket_send_response(data)         // Send read response
 socket_server_close()              // Cleanup
 ```
 
+### FSIM Logging
+
+**When compiled with `-DFSIM` (enabled in Makefile)**, RTL modules create detailed transaction logs using `$fdisplay`:
+
+**Log File Location**: `logs/fsim_logs/{module_name}.log`
+
+**What gets logged**:
+- Interface node memory transactions (READ/WRITE operations)
+- Instruction memory accesses (IMEM)
+- Policy updates
+- Pipeline stages (ID_EX, MEM, WB)
+- Router and flow interface operations
+
+**Example log files** (auto-created during simulation):
+```
+logs/fsim_logs/
+├── run.log                                          # Main simulation log
+├── testbench_imcflow_gem5.u_imcflow_with_axi...    # Module-specific logs
+└── ...
+```
+
+**How it works**:
+- `utils::ModuleLogger` instances in RTL use `utils::FdManager` singleton
+- Testbench calls `fdm.set_log_file_path("logs/fsim_logs")` during initialization
+- Each module creates its own log file: `{log_file_path}/{module_name}.log`
+- Files are created automatically when first `$fdisplay()` is executed
+
+**Example from `imem_intf_node.sv`**:
+```systemverilog
+`ifdef FSIM
+  utils::ModuleLogger logger = new($sformatf("%m"));
+
+  initial begin
+    while (1) begin
+      @(posedge clk_i);
+      if (~csn & we) begin
+        $fdisplay(logger.get_fd(), "[%t] INST WRITEN | addr:%8d | data:%8d",
+                  $time, rw_addr, wr_data);
+      end
+    end
+  end
+`endif
+```
+
 ### RTL Files
 
 ImcFlow RTL: `~/project/imcflow/pmap/modules/top/source/`
