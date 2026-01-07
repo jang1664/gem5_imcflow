@@ -13,7 +13,7 @@ LOGS_DIR = logs
 # Simulation settings
 SIMUL_EXEC = vcs
 SIMUL_OPTS = ""
-DEFINE = "SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+PROF+MEM_MODEL" # + separated
+DEFINE = "SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+PROF" # + separated
 PARAM_FILE = "${BUILD_DIR}/parameters.txt"
 INCLUDE_DIR = "${IMCFLOW_DIR}/pmap/modules/top/include+${IMCFLOW_DIR}/pmap/classes+${IMCFLOW_DIR}/pmap/include"
 

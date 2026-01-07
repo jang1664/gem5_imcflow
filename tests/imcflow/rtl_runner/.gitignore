@@ -8,6 +8,7 @@ logs/
 
 # gem5 outputs
 m5out/
+mlf/
 
 # Test outputs
 test_outputs/

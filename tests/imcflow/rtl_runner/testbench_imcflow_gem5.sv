@@ -369,7 +369,7 @@ module testbench_imcflow_gem5
   initial begin
     // FSDB waveform dumping for Verdi
     $fsdbDumpfile("imcflow_gem5.fsdb");
-    $fsdbDumpvars(0, testbench_imcflow_gem5);
+    $fsdbDumpvars(0, "+all", "+parameter", "+functions", testbench_imcflow_gem5);
     $fsdbDumpMDA();
 
     $display("=== Starting ImcFlow RTL Co-Simulation with gem5 ===\n");
