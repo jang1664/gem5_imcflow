@@ -383,13 +383,11 @@ module testbench_imcflow_gem5
 
         // Process the transaction via AXI
         if (is_write) begin
-          // Write operation
           automatic logic [AXI_ADDR_WIDTH-1:0] axi_addr;
-          automatic logic [11:0] byte_offset;
+          automatic logic [19:0] byte_offset;
 
-          // Extract lower bits for ImcFlow address space
-          byte_offset = addr[11:0];
-          axi_addr = {8'b0, byte_offset};
+          byte_offset = addr[19:0];
+          axi_addr = byte_offset;
 
           $display("[SV] Processing WRITE: addr=0x%08x -> AXI addr=0x%05x, data=0x%08x",
                    addr, axi_addr, data);
@@ -397,14 +395,12 @@ module testbench_imcflow_gem5
           axi_write_single(axi_addr, data);
 
         end else begin
-          // Read operation
           automatic logic [AXI_ADDR_WIDTH-1:0] axi_addr;
-          automatic logic [11:0] byte_offset;
+          automatic logic [19:0] byte_offset;
           automatic logic [AXI_DATA_WIDTH-1:0] read_data;
 
-          // Extract lower bits for ImcFlow address space
-          byte_offset = addr[11:0];
-          axi_addr = {8'b0, byte_offset};
+          byte_offset = addr[19:0];
+          axi_addr = byte_offset;
 
           $display("[SV] Processing READ: addr=0x%08x -> AXI addr=0x%05x", addr, axi_addr);
 
