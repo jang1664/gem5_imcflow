@@ -33,8 +33,8 @@ else
 fi
 
 if [ "$GDB" == "yes" ]; then
-    $GEM5_BIN --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --gdb
+    $GEM5_BIN --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --gdb
 else
     # Run without debug flags for faster execution
-    $GEM5_BIN $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME
+    $GEM5_BIN $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner
 fi

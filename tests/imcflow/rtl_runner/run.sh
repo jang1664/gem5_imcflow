@@ -117,7 +117,8 @@ echo ""
 # Build gem5 command
 GEM5_CMD="$GEM5_BIN $GEM5_HOME/configs/imcflow/run_imcflow_rtl.py \
     --binary binaries/$BINARY \
-    --test-name $TEST_NAME"
+    --test-name $TEST_NAME \
+    --runner-name rtl_runner"
 
 # Add GDB flag if requested
 if [ "$GDB" == "yes" ]; then

@@ -12,47 +12,52 @@ import m5
 from m5.objects import *
 
 # Parse command-line arguments
-parser = argparse.ArgumentParser(description="gem5 + VCS RTL co-simulation runner")
+parser = argparse.ArgumentParser(
+    description="gem5 + VCS RTL co-simulation runner"
+)
 parser.add_argument(
     "--binary", required=True, help="Path to user-level binary to execute"
 )
 parser.add_argument(
     "--test-name",
     default="default_test",
-    help="Test name for input/output directories"
+    help="Test name for input/output directories",
+)
+parser.add_argument(
+    "--runner-name",
+    default="",
+    help="Runner name (e.g., py_runner, rtl_runner) for output subdirectory",
 )
 parser.add_argument(
     "--imc-base",
     type=lambda x: int(x, 0),
     default=0x80000000,
-    help="ImcFlow MMIO base address (default: 0x80000000)"
+    help="ImcFlow MMIO base address (default: 0x80000000)",
 )
 parser.add_argument(
     "--imc-size",
     type=lambda x: int(x, 0),
     default=266368,
-    help="ImcFlow MMIO region size (default: 266368 = 260KB)"
+    help="ImcFlow MMIO region size (default: 266368 = 260KB)",
 )
 parser.add_argument(
     "--vcs-host",
     default="127.0.0.1",
-    help="VCS server host address (default: 127.0.0.1)"
+    help="VCS server host address (default: 127.0.0.1)",
 )
 parser.add_argument(
     "--vcs-port",
     type=int,
     default=9999,
-    help="VCS server port number (default: 9999)"
+    help="VCS server port number (default: 9999)",
 )
 parser.add_argument(
-    "--mem-size",
-    default="512MB",
-    help="System memory size (default: 512MB)"
+    "--mem-size", default="512MB", help="System memory size (default: 512MB)"
 )
 parser.add_argument(
     "--gdb",
     action="store_true",
-    help="Enable GDB remote debugging on port 7000"
+    help="Enable GDB remote debugging on port 7000",
 )
 args = parser.parse_args()
 
@@ -107,8 +112,17 @@ if args.gdb:
     system.workload.remote_gdb_port = 7000
     print(f"[*] GDB remote debugging enabled on port 7000")
 
-# Pass test_name as first argument to the binary
-process = Process(cmd=[args.binary, args.test_name])
+# Build command for binary
+# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name]
+binary_cmd = [args.binary, args.test_name]
+if args.runner_name:
+    # Pass default eval_dir, graph, params, then runner_name
+    eval_dir = "/root/project/tvm/tvm_practice/test_imcflow/codegen"
+    graph_path = "mlf/executor-config/graph/default.graph"
+    params_path = "mlf/parameters/default.params"
+    binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
+
+process = Process(cmd=binary_cmd)
 system.cpu.workload = process
 system.cpu.createThreads()
 
@@ -131,7 +145,9 @@ print()
 m5.instantiate()
 
 # CRITICAL: Map MMIO region into process address space for SE mode
-print(f"[*] Mapping MMIO region 0x{args.imc_base:08x}-0x{args.imc_base+args.imc_size:08x} into process...")
+print(
+    f"[*] Mapping MMIO region 0x{args.imc_base:08x}-0x{args.imc_base+args.imc_size:08x} into process..."
+)
 process.map(args.imc_base, args.imc_base, args.imc_size)
 print("[*] MMIO mapping complete!")
 print()
