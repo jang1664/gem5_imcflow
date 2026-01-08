@@ -74,7 +74,7 @@ run: compile ## Run the RTL simulation (waits for gem5 connection on port 9999)
 sim: run ## Alias for run
 
 verdi: ## Open Verdi waveform viewer
-	verdi -ssf inter.fsdb -dbdir ${BUILD_DIR}/simv_imcflow_gem5.daidir
+	verdi -ssf imcflow_gem5.fsdb -dbdir ${BUILD_DIR}/simv_imcflow_gem5.daidir
 
 help:
 	@echo "ImcFlow RTL Co-Simulation Makefile"
