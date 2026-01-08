@@ -336,7 +336,7 @@ module testbench_imcflow_gem5
   int unsigned data;
   int result;
   int no_transaction_count;
-  int transaction_received_count = 0;
+  longint unsigned transaction_received_count = 0;  // 64-bit to prevent overflow
 
   // FSIM logging infrastructure
   utils::FdManager fdm = utils::FdManager::get_inst();
@@ -487,21 +487,21 @@ module testbench_imcflow_gem5
         // If we haven't received ANY transactions yet, wait longer (gem5 initialization)
         // Once we get transactions, use shorter timeout
         if (transaction_received_count == 0) begin
-          // Still waiting for first transaction - be very patient (200 seconds)
+          // Still waiting for first transaction - be very patient (2M cycles ~20ms at 10ns)
           if (no_transaction_count > 2000000) begin
-            $display("[SV] No transactions after 200s, giving up");
+            $display("[SV] No transactions after 2M cycles, giving up");
             break;
           end
         end else begin
-          // Got transactions, now wait for more with shorter timeout (10 seconds)
+          // Got transactions, now wait for more with shorter timeout (100k cycles ~1ms)
           if (no_transaction_count > 100000) begin
-            $display("[SV] No more transactions for 10s after receiving %0d transactions",
+            $display("[SV] No more transactions for 100k cycles after receiving %0d transactions",
                      transaction_received_count);
             $display("[SV] Assuming test complete");
             break;
           end
         end
-        #100000; // 100000 time units (wait longer between polls)
+        @(posedge clk); // Wait for one clock cycle before next poll
       end
     end
 
