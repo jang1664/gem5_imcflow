@@ -13,9 +13,10 @@ LOGS_DIR = logs
 # Simulation settings
 SIMUL_EXEC = vcs
 SIMUL_OPTS = ""
-DEFINE = "SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+PROF" # + separated
+DEFINE = "SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+PROF+DEBUG" # + separated
 PARAM_FILE = "${BUILD_DIR}/parameters.txt"
 INCLUDE_DIR = "${IMCFLOW_DIR}/pmap/modules/top/include+${IMCFLOW_DIR}/pmap/classes+${IMCFLOW_DIR}/pmap/include"
+SOCKET_PORT ?= 9999
 
 # Output files
 SIMV_BINARY = ${BUILD_DIR}/simv_imcflow_gem5
@@ -33,6 +34,7 @@ clean: ## Clean logs and temporary files
 	rm -f ${LOGS_DIR}/*.log
 	rm -f *.key *.history *.swp core.* transcript vsim.wlf vsim_stacktrace.vstf
 	rm -rf verdiLog novas*
+	rm -rf vcs_compile.log
 
 clean_all: clean ## Clean all build artifacts and logs
 	rm -rf ${BUILD_DIR}
@@ -67,9 +69,9 @@ compile: clean_all setup ## Compile the RTL co-simulation (usage: make compile D
 
 run: compile ## Run the RTL simulation (waits for gem5 connection on port 9999)
 	@echo "=== Starting ImcFlow RTL Co-Simulation ==="
-	@echo "Waiting for gem5 to connect on port 9999..."
+	@echo "Waiting for gem5 to connect on port $(SOCKET_PORT)..."
 	@echo "Log will be saved to: ${LOGS_DIR}/vcs_sim.log"
-	${SIMV_BINARY}
+	${SIMV_BINARY} +SOCKET_PORT=$(SOCKET_PORT)
 
 sim: run ## Alias for run
 
