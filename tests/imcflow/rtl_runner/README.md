@@ -80,6 +80,12 @@ imcflow_gem5.fsdb        # Waveform database (for Verdi)
 test_outputs/<test_name>/ # Test results
 ```
 
+**NOTE**: You can run end-to-end process (binary generation ~ fsdb generation) as below.
+```bash
+cd /project/tvm/tvm_practice/test_imcflow/codegen/
+python test.py -k [test_name] -s
+```
+
 ### MMIO Communication Test
 
 **Usage:**
@@ -329,6 +335,7 @@ build/simv_imcflow_gem5            # Start VCS server manually
 **Compilation errors:**
 - Ensure `IMCFLOW_DIR` environment variable is set
 - Check RTL file paths in `rtl.f`, `tb.f`, `tech.f`
+- error "sh: 1: Syntax error: Bad fd number" during VCS compilation : run `ln -sf /bin/bash /bin/sh`
 
 **Test hangs:**
 - Check both gem5 and VCS logs in `logs/` directory
@@ -338,3 +345,6 @@ build/simv_imcflow_gem5            # Start VCS server manually
 - Verify compilation with `-DFSIM` flag in Makefile
 - Check `logs/fsim_logs/` directory is created
 - Look for log files matching module hierarchy names
+
+**Verdi errors**
+- install libraries : `apt-get install libnuma1 libxss1`
