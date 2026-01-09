@@ -13,7 +13,7 @@ Run ImcFlow RTL simulations with gem5 via socket communication. Execute TVM-comp
 This will:
 1. Compile VCS RTL simulation (if needed) → `build/`
 2. Copy TVM binaries and MLF from TVM build directory
-3. Start VCS RTL server on port 9999
+3. Start VCS RTL server on port 9999 (or SOCKET_PORT)
 4. Run gem5 with TVM binary executing on ImcFlow RTL
 5. Save logs to `logs/` and waveforms to `imcflow_gem5.fsdb`
 
@@ -33,7 +33,7 @@ TVM Host Binary (x86)
     gem5 CPU + System
         ↓
 ImcflowPIOSocket Device (gem5)
-        ↓ (TCP Socket: 127.0.0.1:9999)
+        ↓ (TCP Socket: 127.0.0.1:9999 (or SOCKET_PORT))
 DPI-C Socket Server (VCS)
         ↓
 SystemVerilog Testbench
@@ -65,7 +65,7 @@ ImcFlow RTL (imcflow_with_axi.sv)
 **What happens:**
 1. **Copy binaries**: `tvm_host_runner` and `mlf/` from `~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/`
 2. **Compile VCS**: If `build/simv_imcflow_gem5` doesn't exist
-3. **Start VCS**: RTL simulator listening on port 9999
+3. **Start VCS**: RTL simulator listening on port 9999 (or SOCKET_PORT)
 4. **Run gem5**: Executes TVM binary with `run_imcflow_rtl.py` config
 5. **Cleanup**: Terminates VCS and saves logs
 
@@ -134,7 +134,7 @@ struct Transaction {
 SystemVerilog testbench uses DPI-C functions from `dpi_socket_server.cpp`:
 
 ```c
-socket_server_init(9999)           // Initialize server
+socket_server_init(9999 (or SOCKET_PORT))           // Initialize server
 socket_server_accept()             // Wait for gem5
 socket_has_transaction()           // Poll for data
 socket_recv_transaction(...)       // Receive MMIO request
@@ -316,7 +316,7 @@ build/simv_imcflow_gem5            # Start VCS server manually
 |--------|-----------|------------|
 | Backend | Python functional model | VCS RTL simulation |
 | Device | ImcflowPIO | ImcflowPIOSocket |
-| Communication | Direct function calls | TCP socket (port 9999) |
+| Communication | Direct function calls | TCP socket (port 9999 (or SOCKET_PORT)) |
 | Accuracy | Functional only | Cycle-accurate RTL |
 | Speed | Very fast (~seconds) | Slow (~minutes to hours) |
 
@@ -330,7 +330,7 @@ build/simv_imcflow_gem5            # Start VCS server manually
 
 **VCS won't connect to gem5:**
 - Check VCS is listening: `tail -f logs/vcs_sim.log`
-- Verify port 9999 is not in use: `netstat -an | grep 9999`
+- Verify port 9999 (or SOCKET_PORT) is not in use: `netstat -an | grep 9999`
 
 **Compilation errors:**
 - Ensure `IMCFLOW_DIR` environment variable is set
