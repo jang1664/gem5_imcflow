@@ -7,6 +7,7 @@ ${IMCFLOW_DIR}/pmap/packages/router_pkg.sv
 ${IMCFLOW_DIR}/pmap/packages/axi_pkg.sv
 ${IMCFLOW_DIR}/pmap/packages/tcdm_pkg.sv
 ${IMCFLOW_DIR}/pmap/packages/utils_pkg.sv
+${IMCFLOW_DIR}/pmap/packages/uuid_generator_pkg.sv
 
 // interfaces
 ${IMCFLOW_DIR}/pmap/interfaces/debug_if.sv

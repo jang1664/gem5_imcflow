@@ -338,6 +338,9 @@ module testbench_imcflow_gem5
   int no_transaction_count;
   longint unsigned transaction_received_count = 0;  // 64-bit to prevent overflow
 
+  // Runtime configuration: socket port (can be overridden with +SOCKET_PORT=<port>)
+  int unsigned socket_port = 9999;
+
   // FSIM logging infrastructure
   utils::FdManager fdm = utils::FdManager::get_inst();
   int log_fd;
@@ -405,8 +408,12 @@ module testbench_imcflow_gem5
     repeat(10) @(posedge clk);
 
     // Initialize socket server
-    $display("[SV] Initializing socket server on port 9999");
-    result = socket_server_init(9999);
+    // Read port from runtime plusarg (defaults to 9999 if not specified)
+    if (!$value$plusargs("SOCKET_PORT=%d", socket_port)) begin
+      socket_port = 9999;  // Default port
+    end
+    $display("[SV] Initializing socket server on port %0d", socket_port);
+    result = socket_server_init(socket_port);
     if (result != 0) begin
       $display("[SV] ERROR: Failed to initialize socket server");
       $finish;

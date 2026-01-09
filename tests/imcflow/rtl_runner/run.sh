@@ -17,6 +17,10 @@ GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 
 echo "========================================"
+
+# Set SOCKET_PORT if not already set (make-style ?= behavior)
+: "${SOCKET_PORT:=9999}"
+export SOCKET_PORT
 echo "  RTL Runner - TVM Workload Execution"
 echo "========================================"
 echo "Binary:     $BINARY"
@@ -84,10 +88,10 @@ rm -f $LOGS_DIR/vcs_sim.log $LOGS_DIR/gem5_output.log
 
 # Start VCS simulation in background
 echo "=== Starting VCS RTL simulation ==="
-echo "VCS listening on port 9999..."
+echo "VCS listening on port $SOCKET_PORT..."
 echo "VCS log: $LOGS_DIR/vcs_sim.log"
 echo "Waveform: imcflow_gem5.fsdb"
-$BUILD_DIR/simv_imcflow_gem5 +fsdbfile+imcflow_gem5.fsdb +fsdb+autoflush > $LOGS_DIR/vcs_sim.log 2>&1 &
+$BUILD_DIR/simv_imcflow_gem5 +SOCKET_PORT=$SOCKET_PORT +fsdbfile+imcflow_gem5.fsdb +fsdb+autoflush > $LOGS_DIR/vcs_sim.log 2>&1 &
 VCS_PID=$!
 echo "VCS simulation started with PID: $VCS_PID"
 echo ""
@@ -118,6 +122,7 @@ echo ""
 GEM5_CMD="$GEM5_BIN $GEM5_HOME/configs/imcflow/run_imcflow_rtl.py \
     --binary binaries/$BINARY \
     --test-name $TEST_NAME \
+    --vcs-port ${SOCKET_PORT:-9999} \
     --runner-name rtl_runner"
 
 # Add GDB flag if requested
