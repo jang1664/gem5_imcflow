@@ -14,6 +14,7 @@ LOGS_DIR = logs
 SIMUL_EXEC = vcs
 SIMUL_OPTS = ""
 DEFINE = "SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+PROF+DEBUG" # + separated
+# DEFINE := $(DEFINE)+BUGFIX_READ_FROM_GPR # only use when you want to simulate rtl without this bug: already tapeouted
 PARAM_FILE = "${BUILD_DIR}/parameters.txt"
 INCLUDE_DIR = "${IMCFLOW_DIR}/pmap/modules/top/include+${IMCFLOW_DIR}/pmap/classes+${IMCFLOW_DIR}/pmap/include"
 SOCKET_PORT ?= 9999
