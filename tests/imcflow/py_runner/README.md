@@ -22,7 +22,7 @@ Test runner for executing TVM-compiled models on gem5 with ImcFlow PIO device.
 
 ## What It Does
 
-1. Copies TVM host runner binary from `~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/`
+1. Copies TVM host runner binary from `~/project/tvm/tvm_practice/test_imcflow/codegen/<test_name>/host_binary_make/build/`
 2. Copies MLF (Model Library Format) directory
 3. Creates output directory at `test_outputs/<test_name>/`
 4. Runs gem5 simulation with the binary

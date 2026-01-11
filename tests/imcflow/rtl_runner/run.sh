@@ -10,11 +10,13 @@ set -e  # Exit on error
 # Directory structure
 BUILD_DIR="build"
 LOGS_DIR="logs"
-TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build
 
 BINARY=${1:-"tvm_host_runner"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
+
+# Set TVM build directory based on test name (uses per-test host_binary_make)
+TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
 
 echo "========================================"
 

@@ -63,7 +63,7 @@ ImcFlow RTL (imcflow_with_axi.sv)
 ```
 
 **What happens:**
-1. **Copy binaries**: `tvm_host_runner` and `mlf/` from `~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/`
+1. **Copy binaries**: `tvm_host_runner` and `mlf/` from `~/project/tvm/tvm_practice/test_imcflow/codegen/<test_name>/host_binary_make/build/`
 2. **Compile VCS**: If `build/simv_imcflow_gem5` doesn't exist
 3. **Start VCS**: RTL simulator listening on port 9999 (or SOCKET_PORT)
 4. **Run gem5**: Executes TVM binary with `run_imcflow_rtl.py` config

@@ -11,8 +11,10 @@ TEST_NAME=${3:-"default_test"}
 # Create binaries directory if it doesn't exist
 mkdir -p binaries
 
-cp ~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/tvm_host_runner binaries/
-cp -r ~/project/tvm/tvm_practice/test_imcflow/codegen/host_binary_make/build/mlf .
+# Copy binaries from test-specific host_binary_make directory
+TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
+cp $TVM_BUILD_DIR/tvm_host_runner binaries/
+cp -r $TVM_BUILD_DIR/mlf .
 
 # Create output directory
 mkdir -p test_outputs/$TEST_NAME
