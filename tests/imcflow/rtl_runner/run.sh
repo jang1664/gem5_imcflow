@@ -1,19 +1,20 @@
 #!/bin/bash
 # RTL Runner for TVM Workloads
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs
 
 set -e  # Exit on error
 
 # Directory structure
 BUILD_DIR="build"
-LOGS_DIR="logs"
 
 BINARY=${1:-"tvm_host_runner"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
+LOG_DIR=${4:-"./logs"}
 
 # Set TVM build directory based on test name (uses per-test host_binary_make)
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
@@ -33,7 +34,7 @@ echo ""
 # Create directories
 echo "Setting up directories..."
 mkdir -p binaries
-mkdir -p $LOGS_DIR
+mkdir -p "$LOG_DIR"
 mkdir -p test_outputs/$TEST_NAME
 echo ""
 
@@ -86,14 +87,15 @@ if [ ! -f "$BUILD_DIR/simv_imcflow_gem5" ]; then
 fi
 
 # Clean up any old log files
-rm -f $LOGS_DIR/vcs_sim.log $LOGS_DIR/gem5_output.log
+rm -f "$LOG_DIR/vcs_sim.log" "$LOG_DIR/gem5_output.log"
 
 # Start VCS simulation in background
 echo "=== Starting VCS RTL simulation ==="
 echo "VCS listening on port $SOCKET_PORT..."
-echo "VCS log: $LOGS_DIR/vcs_sim.log"
+echo "VCS log: $LOG_DIR/vcs_sim.log"
+echo "FSIM logs: $LOG_DIR/fsim_logs/"
 echo "Waveform: imcflow_gem5.fsdb"
-$BUILD_DIR/simv_imcflow_gem5 +SOCKET_PORT=$SOCKET_PORT +fsdbfile+imcflow_gem5.fsdb +fsdb+autoflush > $LOGS_DIR/vcs_sim.log 2>&1 &
+$BUILD_DIR/simv_imcflow_gem5 +SOCKET_PORT=$SOCKET_PORT +FSIM_LOG_DIR=$LOG_DIR/fsim_logs +fsdbfile+imcflow_gem5.fsdb +fsdb+autoflush > "$LOG_DIR/vcs_sim.log" 2>&1 &
 VCS_PID=$!
 echo "VCS simulation started with PID: $VCS_PID"
 echo ""
@@ -107,7 +109,7 @@ if ! kill -0 $VCS_PID 2>/dev/null; then
     echo "ERROR: VCS simulation terminated unexpectedly"
     echo ""
     echo "Last 30 lines of VCS log:"
-    tail -30 $LOGS_DIR/vcs_sim.log
+    tail -30 "$LOG_DIR/vcs_sim.log"
     exit 1
 fi
 
@@ -117,11 +119,14 @@ echo ""
 # Run gem5 with ImcflowPIOSocket device
 echo "=== Starting gem5 with TVM workload ==="
 echo "Running: $GEM5_BIN with run_imcflow_rtl.py"
-echo "gem5 log: $LOGS_DIR/gem5_output.log"
+echo "gem5 log: $LOG_DIR/gem5_output.log"
 echo ""
 
+# Set imcflow log directory to redirect simulator logs
+export IMCFLOW_LOG_DIR="$LOG_DIR"
+
 # Build gem5 command
-GEM5_CMD="$GEM5_BIN $GEM5_HOME/configs/imcflow/run_imcflow_rtl.py \
+GEM5_CMD="$GEM5_BIN --outdir=\"$LOG_DIR\" $GEM5_HOME/configs/imcflow/run_imcflow_rtl.py \
     --binary binaries/$BINARY \
     --test-name $TEST_NAME \
     --vcs-port ${SOCKET_PORT:-9999} \
@@ -134,7 +139,7 @@ if [ "$GDB" == "yes" ]; then
 fi
 
 # Run gem5 and save output
-$GEM5_CMD 2>&1 | tee $LOGS_DIR/gem5_output.log
+$GEM5_CMD 2>&1 | tee "$LOG_DIR/gem5_output.log"
 
 GEM5_EXIT=${PIPESTATUS[0]}
 
@@ -163,7 +168,7 @@ echo ""
 
 # Display VCS simulation summary
 echo "=== VCS Simulation Log (last 40 lines) ==="
-tail -40 $LOGS_DIR/vcs_sim.log
+tail -40 "$LOG_DIR/vcs_sim.log"
 echo ""
 
 # Check for success
@@ -179,9 +184,9 @@ if [ $GEM5_EXIT -eq 0 ]; then
     fi
     echo ""
     echo "Logs saved:"
-    echo "  - VCS log: $LOGS_DIR/vcs_sim.log"
-    echo "  - gem5 log: $LOGS_DIR/gem5_output.log"
-    echo "  - gem5 m5out: m5out/"
+    echo "  - VCS log: $LOG_DIR/vcs_sim.log"
+    echo "  - gem5 log: $LOG_DIR/gem5_output.log"
+    echo "  - gem5 debug logs: $LOG_DIR/"
     echo ""
     echo "Build artifacts:"
     echo "  - VCS binary: $BUILD_DIR/simv_imcflow_gem5"
@@ -193,7 +198,7 @@ else
     echo "========================================"
     echo ""
     echo "Check logs for details:"
-    echo "  - VCS log: $LOGS_DIR/vcs_sim.log"
-    echo "  - gem5 log: $LOGS_DIR/gem5_output.log"
+    echo "  - VCS log: $LOG_DIR/vcs_sim.log"
+    echo "  - gem5 log: $LOG_DIR/gem5_output.log"
     exit 1
 fi

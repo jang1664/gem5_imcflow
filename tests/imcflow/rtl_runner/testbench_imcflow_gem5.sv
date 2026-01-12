@@ -344,7 +344,14 @@ module testbench_imcflow_gem5
   // FSIM logging infrastructure
   utils::FdManager fdm = utils::FdManager::get_inst();
   int log_fd;
-  string log_file_path = "logs/fsim_logs";
+  string log_file_path;
+
+  initial begin
+    // Get log directory from plusarg, default to "logs/fsim_logs"
+    if (!$value$plusargs("FSIM_LOG_DIR=%s", log_file_path)) begin
+      log_file_path = "logs/fsim_logs";
+    end
+  end
 
   // Task to perform AXI write
   task axi_write_single(input logic [AXI_ADDR_WIDTH-1:0] addr, input logic [AXI_DATA_WIDTH-1:0] data);

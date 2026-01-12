@@ -1,12 +1,14 @@
 #!/bin/bash
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs
 
 BINARY=${1:-"test_imcflow"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
+LOG_DIR=${4:-"./logs"}
 
 # Create binaries directory if it doesn't exist
 mkdir -p binaries
@@ -19,11 +21,17 @@ cp -r $TVM_BUILD_DIR/mlf .
 # Create output directory
 mkdir -p test_outputs/$TEST_NAME
 
+# Create log directory
+mkdir -p "$LOG_DIR"
+
 # DFLAGS="ImcflowPIO,BaseXBar,AddrRanges"
 
 # Debug flags enabled only for GDB mode (for performance)
 DFLAGS="ImcflowPIO,AddrRanges"
 export PYTHONPATH=$PYTHONPATH:/root/project/tvm/tvm_practice/tvm_env/lib/python3.10/site-packages
+
+# Set imcflow log directory to redirect simulator logs
+export IMCFLOW_LOG_DIR="$LOG_DIR"
 
 # Select gem5 binary: prefer gem5.fast if available, otherwise use gem5.opt
 if [ -f "$GEM5_HOME/build/X86/gem5.fast" ]; then
@@ -35,8 +43,8 @@ else
 fi
 
 if [ "$GDB" == "yes" ]; then
-    $GEM5_BIN --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --gdb
+    $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --gdb
 else
     # Run without debug flags for faster execution
-    $GEM5_BIN $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner
+    $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner
 fi
