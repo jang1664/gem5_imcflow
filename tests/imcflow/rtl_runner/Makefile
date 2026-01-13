@@ -13,9 +13,9 @@ LOGS_DIR = logs
 # Simulation settings
 SIMUL_EXEC = vcs
 SIMUL_OPTS = ""
-DEFINE = "SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+PROF+DEBUG" # + separated
-# DEFINE := $(DEFINE)+BUGFIX_READ_FROM_GPR # only use when you want to simulate rtl without this bug: already tapeouted
-DEFINE := $(DEFINE)+BUGFIX_LOAD_USE_HAZARD # enable fix for load-use hazard in inode pipeline
+DEFINE = SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+MEM_MODEL+DEBUG# + separated
+DEFINE := $(DEFINE)+BUGFIX_READ_FROM_GPR # only use when you want to simulate rtl without this bug: already tapeouted
+# DEFINE := $(DEFINE)+BUGFIX_LOAD_USE_HAZARD # enable fix for load-use hazard in inode pipeline (this is not yet implemented in RTL)
 PARAM_FILE = "${BUILD_DIR}/parameters.txt"
 INCLUDE_DIR = "${IMCFLOW_DIR}/pmap/modules/top/include+${IMCFLOW_DIR}/pmap/classes+${IMCFLOW_DIR}/pmap/include"
 SOCKET_PORT ?= 9999
@@ -56,7 +56,7 @@ compile: clean_all setup ## Compile the RTL co-simulation (usage: make compile D
 	-assert svaext \
 	+warn=noUII-L \
 	+warn=noIDTS \
-	+lint=noTFIPC-L \
+	+suppress=TFIPC-L \
 	+lint=PCWM \
 	+delay_mode_zero \
 	-debug_region=cell \

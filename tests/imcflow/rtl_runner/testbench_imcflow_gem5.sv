@@ -5,7 +5,6 @@
 
 module testbench_imcflow_gem5
   import imcflow_pkg::*;
-  import utils::*;
   #(
     parameter int unsigned AXI_DATA_WIDTH = imcflow_pkg::IO_DATA_WIDTH,
     parameter int unsigned AXI_ADDR_WIDTH = imcflow_pkg::IO_ADDR_WIDTH,
@@ -342,7 +341,9 @@ module testbench_imcflow_gem5
   int unsigned socket_port = 9999;
 
   // FSIM logging infrastructure
+  `ifdef FSIM
   utils::FdManager fdm = utils::FdManager::get_inst();
+  `endif
   int log_fd;
   string log_file_path;
 
@@ -399,7 +400,9 @@ module testbench_imcflow_gem5
     // ==================================================================
     $display("[FSIM] Creating log directory: %s", log_file_path);
     $system({"mkdir -p ", log_file_path});
+    `ifdef FSIM
     fdm.set_log_file_path(log_file_path);
+    `endif
     log_fd = $fopen({log_file_path, "/run.log"}, "w");
     $fdisplay(log_fd, "=== ImcFlow RTL Co-Simulation with gem5 ===");
     $fdisplay(log_fd, "Timestamp: %0t", $time);
