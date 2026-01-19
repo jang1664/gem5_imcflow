@@ -1,5 +1,5 @@
 #!/bin/bash
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [npz_file]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
@@ -9,6 +9,7 @@ BINARY=${1:-"test_imcflow"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
+NPZ_FILE=${5:-""}
 
 # Create binaries directory if it doesn't exist
 mkdir -p binaries
@@ -17,6 +18,22 @@ mkdir -p binaries
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
 cp $TVM_BUILD_DIR/tvm_host_runner binaries/
 cp -r $TVM_BUILD_DIR/mlf .
+
+# Copy NPZ file if provided
+if [ -n "$NPZ_FILE" ]; then
+    if [ -f "$NPZ_FILE" ]; then
+        cp "$NPZ_FILE" binaries/
+        NPZ_FILENAME=$(basename "$NPZ_FILE")
+        # Pass full path within sim directory since binary runs from there
+        NPZ_FILE_ARG="binaries/$NPZ_FILENAME"
+        echo "Copied NPZ file: $NPZ_FILE -> $NPZ_FILE_ARG"
+    else
+        echo "Warning: NPZ file not found: $NPZ_FILE"
+        NPZ_FILE_ARG=""
+    fi
+else
+    NPZ_FILE_ARG=""
+fi
 
 # Create output directory
 mkdir -p test_outputs/$TEST_NAME
@@ -43,8 +60,8 @@ else
 fi
 
 if [ "$GDB" == "yes" ]; then
-    $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --gdb
+    $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --gdb ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
 else
     # Run without debug flags for faster execution
-    $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner
+    $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
 fi

@@ -1,6 +1,6 @@
 #!/bin/bash
 # RTL Runner for TVM Workloads
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [npz_file]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
@@ -15,6 +15,7 @@ BINARY=${1:-"tvm_host_runner"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
+NPZ_FILE=${5:-""}
 
 # Set TVM build directory based on test name (uses per-test host_binary_make)
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
@@ -61,6 +62,18 @@ if [ -d "$TVM_BUILD_DIR/test_inputs/$TEST_NAME" ]; then
     mkdir -p test_inputs
     cp -r $TVM_BUILD_DIR/test_inputs/$TEST_NAME test_inputs/
     echo "  ✓ Copied test inputs for $TEST_NAME"
+fi
+
+# Copy NPZ file if provided
+if [ -n "$NPZ_FILE" ]; then
+    if [ -f "$NPZ_FILE" ]; then
+        echo "  ✓ NPZ file found: $NPZ_FILE"
+    else
+        echo "  ! Warning: NPZ file not found: $NPZ_FILE"
+        NPZ_FILE=""
+    fi
+else
+    NPZ_FILE=""
 fi
 echo ""
 
@@ -131,6 +144,11 @@ GEM5_CMD="$GEM5_BIN --outdir=\"$LOG_DIR\" $GEM5_HOME/configs/imcflow/run_imcflow
     --test-name $TEST_NAME \
     --vcs-port ${SOCKET_PORT:-9999} \
     --runner-name rtl_runner"
+
+# Add NPZ file if provided
+if [ -n "$NPZ_FILE" ]; then
+    GEM5_CMD="$GEM5_CMD --npz-file \"$NPZ_FILE\""
+fi
 
 # Add GDB flag if requested
 if [ "$GDB" == "yes" ]; then
