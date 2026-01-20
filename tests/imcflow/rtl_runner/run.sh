@@ -1,10 +1,10 @@
 #!/bin/bash
 # RTL Runner for TVM Workloads
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [npz_file]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [npz_dir]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
-#   ./run.sh tvm_host_runner no one_conv /path/to/logs
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs /path/to/npz_dir
 
 set -e  # Exit on error
 
@@ -15,7 +15,7 @@ BINARY=${1:-"tvm_host_runner"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
-NPZ_FILE=${5:-""}
+NPZ_DIR=${5:-""}
 
 # Set TVM build directory based on test name (uses per-test host_binary_make)
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
@@ -30,6 +30,7 @@ echo "========================================"
 echo "Binary:     $BINARY"
 echo "GDB Mode:   $GDB"
 echo "Test Name:  $TEST_NAME"
+echo "NPZ Dir:    $NPZ_DIR"
 echo ""
 
 # Create directories
@@ -64,16 +65,16 @@ if [ -d "$TVM_BUILD_DIR/test_inputs/$TEST_NAME" ]; then
     echo "  ✓ Copied test inputs for $TEST_NAME"
 fi
 
-# Copy NPZ file if provided
-if [ -n "$NPZ_FILE" ]; then
-    if [ -f "$NPZ_FILE" ]; then
-        echo "  ✓ NPZ file found: $NPZ_FILE"
+# Copy NPZ directory if provided
+if [ -n "$NPZ_DIR" ]; then
+    if [ -d "$NPZ_DIR" ]; then
+        echo "  ✓ NPZ directory found: $NPZ_DIR"
     else
-        echo "  ! Warning: NPZ file not found: $NPZ_FILE"
-        NPZ_FILE=""
+        echo "  ! Warning: NPZ directory not found: $NPZ_DIR"
+        NPZ_DIR=""
     fi
 else
-    NPZ_FILE=""
+    NPZ_DIR=""
 fi
 echo ""
 
@@ -145,9 +146,9 @@ GEM5_CMD="$GEM5_BIN --outdir=\"$LOG_DIR\" $GEM5_HOME/configs/imcflow/run_imcflow
     --vcs-port ${SOCKET_PORT:-9999} \
     --runner-name rtl_runner"
 
-# Add NPZ file if provided
-if [ -n "$NPZ_FILE" ]; then
-    GEM5_CMD="$GEM5_CMD --npz-file \"$NPZ_FILE\""
+# Add NPZ directory if provided
+if [ -n "$NPZ_DIR" ]; then
+    GEM5_CMD="$GEM5_CMD --npz-file \"$NPZ_DIR\""
 fi
 
 # Add GDB flag if requested
