@@ -44,6 +44,11 @@ parser.add_argument(
     action="store_true",
     help="Enable gdb stub on the CPU",
 )
+parser.add_argument(
+    "--npz-file",
+    default="",
+    help="NPZ file path to pass to the binary",
+)
 args = parser.parse_args()
 
 system = make_system(args.imc_base, args.imc_size, args.mem_size)
@@ -55,7 +60,7 @@ if args.gdb:
     system.workload.remote_gdb_port = 7000
 
 # Build command for binary
-# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name]
+# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name] [npz_file]
 binary_cmd = [args.binary, args.test_name]
 if args.runner_name:
     # Pass default eval_dir, graph, params, then runner_name
@@ -63,6 +68,10 @@ if args.runner_name:
     graph_path = "mlf/executor-config/graph/default.graph"
     params_path = "mlf/parameters/default.params"
     binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
+    
+# Add NPZ file if specified
+if args.npz_file:
+    binary_cmd.append(args.npz_file)
 
 process = Process(cmd=binary_cmd)
 system.cpu.workload = process
