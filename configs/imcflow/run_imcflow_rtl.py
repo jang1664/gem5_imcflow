@@ -66,6 +66,18 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+# Dump parsed arguments
+print("=" * 70)
+print(" gem5 RTL Co-Simulation Configuration")
+print("=" * 70)
+for arg, value in vars(args).items():
+    if "base" in arg or "size" in arg and isinstance(value, int):
+        print(f"  {arg}: {value} (0x{value:x})")
+    else:
+        print(f"  {arg}: {value}")
+print("=" * 70)
+print()
+
 # Create system
 system = System()
 system.clk_domain = SrcClockDomain()

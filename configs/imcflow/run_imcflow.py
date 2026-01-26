@@ -51,6 +51,18 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+# Dump parsed arguments
+print("=" * 70)
+print(" gem5 Configuration")
+print("=" * 70)
+for arg, value in vars(args).items():
+    if "base" in arg or "size" in arg and isinstance(value, int):
+        print(f"  {arg}: {value} (0x{value:x})")
+    else:
+        print(f"  {arg}: {value}")
+print("=" * 70)
+print()
+
 system = make_system(args.imc_base, args.imc_size, args.mem_size)
 
 # User-level workload
@@ -68,7 +80,7 @@ if args.runner_name:
     graph_path = "mlf/executor-config/graph/default.graph"
     params_path = "mlf/parameters/default.params"
     binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
-    
+
 # Add NPZ file if specified
 if args.npz_file:
     binary_cmd.append(args.npz_file)

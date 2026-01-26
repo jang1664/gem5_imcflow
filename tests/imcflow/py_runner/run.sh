@@ -1,15 +1,16 @@
 #!/bin/bash
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [npz_file]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [npz_file]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
-#   ./run.sh tvm_host_runner no one_conv /path/to/logs
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368
 
 BINARY=${1:-"test_imcflow"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
-NPZ_FILE=${5:-""}
+IMC_SIZE=${5:-"266368"}
+NPZ_FILE=${6:-""}
 
 # Create binaries directory if it doesn't exist
 mkdir -p binaries
@@ -60,8 +61,8 @@ else
 fi
 
 if [ "$GDB" == "yes" ]; then
-    $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --gdb ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
+    $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --gdb ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
 else
     # Run without debug flags for faster execution
-    $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
+    $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
 fi
