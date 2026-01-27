@@ -1,10 +1,10 @@
 #!/bin/bash
 # RTL Runner for TVM Workloads
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [npz_dir]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [npz_dir]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
-#   ./run.sh tvm_host_runner no one_conv /path/to/logs /path/to/npz_dir
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/npz_dir
 
 set -e  # Exit on error
 
@@ -15,7 +15,8 @@ BINARY=${1:-"tvm_host_runner"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
-NPZ_DIR=${5:-""}
+IMC_SIZE=${5:-"266368"}
+NPZ_DIR=${6:-""}
 
 # Set TVM build directory based on test name (uses per-test host_binary_make)
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
@@ -152,7 +153,8 @@ GEM5_CMD="$GEM5_BIN --outdir=\"$LOG_DIR\" $GEM5_HOME/configs/imcflow/run_imcflow
     --binary binaries/$BINARY \
     --test-name $TEST_NAME \
     --vcs-port ${SOCKET_PORT:-9999} \
-    --runner-name rtl_runner"
+    --runner-name rtl_runner \
+    --imc-size $IMC_SIZE"
 
 # Add NPZ directory if provided
 if [ -n "$NPZ_DIR" ]; then
