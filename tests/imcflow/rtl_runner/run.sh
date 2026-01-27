@@ -157,28 +157,32 @@ echo ""
 # Set imcflow log directory to redirect simulator logs
 export IMCFLOW_LOG_DIR="$LOG_DIR"
 
-# Build gem5 command (using per-test binary directory and MLF directory)
-GEM5_CMD="$GEM5_BIN --outdir=\"$LOG_DIR\" $GEM5_HOME/configs/imcflow/run_imcflow_rtl.py \
-    --binary $BINARY_DIR/$BINARY \
-    --test-name $TEST_NAME \
-    --vcs-port $SOCKET_PORT \
-    --runner-name rtl_runner \
-    --imc-size $IMC_SIZE \
-    --mlf-dir $MLF_DIR"
+# Build gem5 command using array (handles paths with spaces correctly)
+GEM5_CMD=(
+    "$GEM5_BIN"
+    "--outdir=$LOG_DIR"
+    "$GEM5_HOME/configs/imcflow/run_imcflow_rtl.py"
+    "--binary" "$BINARY_DIR/$BINARY"
+    "--test-name" "$TEST_NAME"
+    "--vcs-port" "$SOCKET_PORT"
+    "--runner-name" "rtl_runner"
+    "--imc-size" "$IMC_SIZE"
+    "--mlf-dir" "$MLF_DIR"
+)
 
-# Add NPZ directory if provided
-if [ -n "$NPZ_DIR" ]; then
-    GEM5_CMD="$GEM5_CMD --npz-file \"$NPZ_DIR\""
+# Add NPZ directory if provided and non-empty
+if [ -n "$NPZ_DIR" ] && [ "$NPZ_DIR" != "" ]; then
+    GEM5_CMD+=("--npz-file" "$NPZ_DIR")
 fi
 
 # Add GDB flag if requested
 if [ "$GDB" == "yes" ]; then
-    GEM5_CMD="$GEM5_CMD --gdb"
+    GEM5_CMD+=("--gdb")
     echo "[*] GDB debugging enabled on port 7000"
 fi
 
 # Run gem5 and save output
-$GEM5_CMD 2>&1 | tee "$LOG_DIR/gem5_output.log"
+"${GEM5_CMD[@]}" 2>&1 | tee "$LOG_DIR/gem5_output.log"
 
 GEM5_EXIT=${PIPESTATUS[0]}
 
