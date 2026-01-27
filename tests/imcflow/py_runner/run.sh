@@ -12,21 +12,25 @@ LOG_DIR=${4:-"./logs"}
 IMC_SIZE=${5:-"266368"}
 NPZ_FILE=${6:-""}
 
-# Create binaries directory if it doesn't exist
-mkdir -p binaries
+# Create per-test directories for isolation (enables concurrent execution)
+BINARY_DIR="binaries/${TEST_NAME}"
+MLF_DIR="mlf_${TEST_NAME}"
+mkdir -p "$BINARY_DIR"
 
 # Copy binaries from test-specific host_binary_make directory
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
-cp $TVM_BUILD_DIR/tvm_host_runner binaries/
-cp -r $TVM_BUILD_DIR/mlf .
+cp $TVM_BUILD_DIR/tvm_host_runner "$BINARY_DIR/"
+rm -rf "$MLF_DIR"
+cp -r $TVM_BUILD_DIR/mlf "$MLF_DIR"
+echo "MLF copied to $MLF_DIR/"
 
-# Copy NPZ file if provided
+# Copy NPZ file if provided (to per-test binary directory)
 if [ -n "$NPZ_FILE" ]; then
     if [ -f "$NPZ_FILE" ]; then
-        cp "$NPZ_FILE" binaries/
+        cp "$NPZ_FILE" "$BINARY_DIR/"
         NPZ_FILENAME=$(basename "$NPZ_FILE")
         # Pass full path within sim directory since binary runs from there
-        NPZ_FILE_ARG="binaries/$NPZ_FILENAME"
+        NPZ_FILE_ARG="$BINARY_DIR/$NPZ_FILENAME"
         echo "Copied NPZ file: $NPZ_FILE -> $NPZ_FILE_ARG"
     else
         echo "Warning: NPZ file not found: $NPZ_FILE"
@@ -61,8 +65,8 @@ else
 fi
 
 if [ "$GDB" == "yes" ]; then
-    $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --gdb ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
+    $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR --gdb ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
 else
     # Run without debug flags for faster execution
-    $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary binaries/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
+    $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR ${NPZ_FILE_ARG:+--npz-file "$NPZ_FILE_ARG"}
 fi

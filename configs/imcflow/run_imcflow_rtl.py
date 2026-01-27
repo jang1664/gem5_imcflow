@@ -64,6 +64,11 @@ parser.add_argument(
     default="",
     help="NPZ file path to pass to the binary",
 )
+parser.add_argument(
+    "--mlf-dir",
+    default="mlf",
+    help="Path to MLF directory (default: mlf)",
+)
 args = parser.parse_args()
 
 # Dump parsed arguments
@@ -134,9 +139,10 @@ if args.gdb:
 binary_cmd = [args.binary, args.test_name]
 if args.runner_name:
     # Pass default eval_dir, graph, params, then runner_name
+    # Use --mlf-dir for test-specific MLF directory (enables concurrent execution)
     eval_dir = "/root/project/tvm/tvm_practice/test_imcflow/codegen"
-    graph_path = "mlf/executor-config/graph/default.graph"
-    params_path = "mlf/parameters/default.params"
+    graph_path = f"{args.mlf_dir}/executor-config/graph/default.graph"
+    params_path = f"{args.mlf_dir}/parameters/default.params"
     binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
 
 # Add NPZ file if specified

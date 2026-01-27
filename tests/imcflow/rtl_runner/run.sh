@@ -1,10 +1,10 @@
 #!/bin/bash
 # RTL Runner for TVM Workloads
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [npz_dir]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [npz_dir] [socket_port]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
-#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/npz_dir
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/npz_dir 10001
 
 set -e  # Exit on error
 
@@ -17,14 +17,19 @@ TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
 IMC_SIZE=${5:-"266368"}
 NPZ_DIR=${6:-""}
+SOCKET_PORT_ARG=${7:-""}
 
 # Set TVM build directory based on test name (uses per-test host_binary_make)
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
 
 echo "========================================"
 
-# Set SOCKET_PORT if not already set (make-style ?= behavior)
-: "${SOCKET_PORT:=9999}"
+# Set SOCKET_PORT: 1) from argument, 2) from env var, 3) default 9999
+if [ -n "$SOCKET_PORT_ARG" ]; then
+    SOCKET_PORT="$SOCKET_PORT_ARG"
+else
+    : "${SOCKET_PORT:=9999}"
+fi
 export SOCKET_PORT
 echo "  RTL Runner - TVM Workload Execution"
 echo "========================================"
@@ -34,9 +39,11 @@ echo "Test Name:  $TEST_NAME"
 echo "NPZ Dir:    $NPZ_DIR"
 echo ""
 
-# Create directories
+# Create directories (per-test isolation for concurrent execution)
 echo "Setting up directories..."
-mkdir -p binaries
+BINARY_DIR="binaries/${TEST_NAME}"
+MLF_DIR="mlf_${TEST_NAME}"
+mkdir -p "$BINARY_DIR"
 mkdir -p "$LOG_DIR"
 mkdir -p test_outputs/$TEST_NAME
 echo ""
@@ -49,12 +56,13 @@ if [ ! -f "$TVM_BUILD_DIR/$BINARY" ]; then
     exit 1
 fi
 
-cp $TVM_BUILD_DIR/$BINARY binaries/
-echo "  ✓ Copied $BINARY to binaries/"
+cp $TVM_BUILD_DIR/$BINARY "$BINARY_DIR/"
+echo "  ✓ Copied $BINARY to $BINARY_DIR/"
 
 if [ -d "$TVM_BUILD_DIR/mlf" ]; then
-    cp -r $TVM_BUILD_DIR/mlf .
-    echo "  ✓ Copied MLF (Model Library Format) directory"
+    rm -rf "$MLF_DIR"
+    cp -r $TVM_BUILD_DIR/mlf "$MLF_DIR"
+    echo "  ✓ Copied MLF to $MLF_DIR/"
 else
     echo "  ! Warning: MLF directory not found at $TVM_BUILD_DIR/mlf"
 fi
@@ -104,13 +112,14 @@ fi
 # Clean up any old log files
 rm -f "$LOG_DIR/vcs_sim.log" "$LOG_DIR/gem5_output.log"
 
-# Start VCS simulation in background
+# Start VCS simulation in background (with per-test waveform file in LOG_DIR)
+FSDB_FILE="$LOG_DIR/imcflow_gem5_${TEST_NAME}.fsdb"
 echo "=== Starting VCS RTL simulation ==="
 echo "VCS listening on port $SOCKET_PORT..."
 echo "VCS log: $LOG_DIR/vcs_sim.log"
 echo "FSIM logs: $LOG_DIR/fsim_logs/"
-echo "Waveform: imcflow_gem5.fsdb"
-$BUILD_DIR/simv_imcflow_gem5 +SOCKET_PORT=$SOCKET_PORT +FSIM_LOG_DIR=$LOG_DIR/fsim_logs +fsdbfile+imcflow_gem5.fsdb +fsdb+autoflush > "$LOG_DIR/vcs_sim.log" 2>&1 &
+echo "Waveform: $FSDB_FILE"
+$BUILD_DIR/simv_imcflow_gem5 +SOCKET_PORT=$SOCKET_PORT +FSIM_LOG_DIR=$LOG_DIR/fsim_logs +fsdbfile+${FSDB_FILE} +fsdb+autoflush > "$LOG_DIR/vcs_sim.log" 2>&1 &
 VCS_PID=$!
 echo "VCS simulation started with PID: $VCS_PID"
 echo ""
@@ -140,13 +149,14 @@ echo ""
 # Set imcflow log directory to redirect simulator logs
 export IMCFLOW_LOG_DIR="$LOG_DIR"
 
-# Build gem5 command
+# Build gem5 command (using per-test binary directory and MLF directory)
 GEM5_CMD="$GEM5_BIN --outdir=\"$LOG_DIR\" $GEM5_HOME/configs/imcflow/run_imcflow_rtl.py \
-    --binary binaries/$BINARY \
+    --binary $BINARY_DIR/$BINARY \
     --test-name $TEST_NAME \
-    --vcs-port ${SOCKET_PORT:-9999} \
+    --vcs-port $SOCKET_PORT \
     --runner-name rtl_runner \
-    --imc-size $IMC_SIZE"
+    --imc-size $IMC_SIZE \
+    --mlf-dir $MLF_DIR"
 
 # Add NPZ directory if provided
 if [ -n "$NPZ_DIR" ]; then
@@ -211,7 +221,7 @@ if [ $GEM5_EXIT -eq 0 ]; then
     echo ""
     echo "Build artifacts:"
     echo "  - VCS binary: $BUILD_DIR/simv_imcflow_gem5"
-    echo "  - Waveform: imcflow_gem5.fsdb (if generated)"
+    echo "  - Waveform: $FSDB_FILE (if generated)"
     exit 0
 else
     echo "========================================"
