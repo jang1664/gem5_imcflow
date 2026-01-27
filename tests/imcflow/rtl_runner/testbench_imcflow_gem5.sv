@@ -340,12 +340,27 @@ module testbench_imcflow_gem5
   // Runtime configuration: socket port (can be overridden with +SOCKET_PORT=<port>)
   int unsigned socket_port = 9999;
 
+  // SRAM backdoor optimization control
+  // Can be controlled via plusarg: +SRAM_BACKDOOR=1 or +SRAM_BACKDOOR=0
+  // Default: enabled (1) for performance
+  bit sram_backdoor_enable = 1'b1;
+
   // FSIM logging infrastructure
   `ifdef FSIM
   utils::FdManager fdm = utils::FdManager::get_inst();
   `endif
   int log_fd;
   string log_file_path;
+
+  // Memory map constants for direct SRAM access optimization
+  // Based on params.svh and imcflow_pkg.sv
+  localparam int unsigned REG_BASE = 32'h0;
+  localparam int unsigned REG_SIZE = 32'h80;  // 128 bytes
+  localparam int unsigned INODE_BASE = 32'h80;  // 128
+  localparam int unsigned INODE_IMEM_SIZE = 32'h400;  // 1024 bytes
+  localparam int unsigned INODE_DMEM_SIZE = 32'h10000;  // 65536 bytes
+  localparam int unsigned INODE_SPACE_SIZE = INODE_IMEM_SIZE + INODE_DMEM_SIZE;  // 66560 bytes per inode
+  localparam int unsigned NUM_INODES = 4;  // CORE_NUM_HEIGHT = 4
 
   initial begin
     // Get log directory from plusarg, default to "logs/fsim_logs"
@@ -382,6 +397,195 @@ module testbench_imcflow_gem5
     data = r_beat.r_data;
   endtask
 
+  // ==================================================================
+  // Direct SRAM Access Tasks (Bypass AXI for Performance)
+  // ==================================================================
+
+  // Task to directly write to INODE IMEM SRAM (bypasses AXI transaction overhead)
+  // Hierarchical path: testbench -> imcflow_with_axi -> imcflow_impl -> core_row[N].core_col[0].inode.u_intf_node -> if_stage -> u_imem_intf_node -> u_mem -> sram
+  // NOTE: MEM_MODEL must be undefined to use behavioral SRAM (sram array) instead of compiled models
+  // IMEM structure: 32-bit wide SRAM, 256 words deep
+  // gem5 sends 32-bit accesses, so byte_addr / 4 = word_addr
+  task sram_write_imem(input int unsigned inode_id, input logic [15:0] byte_addr, input logic [31:0] data);
+    logic [7:0] word_addr;   // 256 words = 8-bit address
+
+    if (!sram_backdoor_enable) begin
+      $error("[SRAM_WRITE_IMEM] Backdoor disabled but called! This should not happen.");
+      return;
+    end
+
+    @(posedge clk);
+
+    // Calculate SRAM word address (32-bit word = 4 bytes)
+    word_addr = byte_addr[9:2];  // Divide by 4 to get word address
+
+    // Direct write to 32-bit SRAM word
+    case (inode_id)
+      0: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr] = data;
+      1: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr] = data;
+      2: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr] = data;
+      3: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr] = data;
+      default: $error("[SRAM_WRITE_IMEM] Invalid inode_id: %0d (must be 0-3)", inode_id);
+    endcase
+
+    // Release after one clock
+    @(posedge clk);
+    case (inode_id)
+      0: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      1: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      2: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      3: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      default: ;
+    endcase
+
+    $display("[SRAM_DIRECT] IMEM WRITE: inode=%0d, byte_addr=0x%04x (sram[0x%02x]), data=0x%08x",
+             inode_id, byte_addr, word_addr, data);
+  endtask
+
+  // Task to directly read from INODE IMEM SRAM
+  task sram_read_imem(input int unsigned inode_id, input logic [15:0] byte_addr, output logic [31:0] data);
+    logic [7:0] word_addr;
+
+    if (!sram_backdoor_enable) begin
+      $error("[SRAM_READ_IMEM] Backdoor disabled but called! This should not happen.");
+      data = 'x;
+      return;
+    end
+
+    @(posedge clk);
+
+    // Calculate SRAM word address
+    word_addr = byte_addr[9:2];
+
+    // Direct read from 32-bit SRAM word
+    case (inode_id)
+      0: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      1: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      2: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      3: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.sram[word_addr];
+      default: begin
+        $error("[SRAM_READ_IMEM] Invalid inode_id: %0d (must be 0-3)", inode_id);
+        data = 'x;
+      end
+    endcase
+
+    $display("[SRAM_DIRECT] IMEM READ: inode=%0d, byte_addr=0x%04x (sram[0x%02x]), data=0x%08x",
+             inode_id, byte_addr, word_addr, data);
+  endtask
+
+  // Task to directly write to INODE DMEM SRAM
+  // Hierarchical path: testbench -> imcflow_with_axi -> imcflow_impl -> core_row[N].core_col[0].inode.u_intf_node -> mem_stage -> u_mem -> sram
+  // NOTE: MEM_MODEL must be undefined to use behavioral SRAM (sram array) instead of compiled models
+  // DMEM structure: 256-bit wide SRAM, 2048 words deep
+  // gem5 sends 32-bit accesses, so we need to:
+  //   1. Calculate SRAM word address: sram_addr = byte_addr / 32 (divide by 256-bit word size in bytes)
+  //   2. Calculate bit offset within 256-bit word: bit_offset = (byte_addr % 32) * 8
+  //   3. Write/read 32-bit slice: sram[sram_addr][bit_offset +: 32]
+  task sram_write_dmem(input int unsigned inode_id, input logic [15:0] byte_addr, input logic [31:0] data);
+    logic [10:0] sram_addr;   // 2048 words = 11-bit address
+    logic [4:0] byte_offset;   // 0-31 byte offset within 256-bit word
+    logic [7:0] bit_offset;    // 0-248 bit offset (byte_offset * 8)
+    logic [255:0] sram_word;
+
+    if (!sram_backdoor_enable) begin
+      $error("[SRAM_WRITE_DMEM] Backdoor disabled but called! This should not happen.");
+      return;
+    end
+
+    @(posedge clk);
+
+    // Calculate SRAM word address and byte offset
+    sram_addr = byte_addr[15:5];     // Upper bits: word address (divide by 32 bytes)
+    byte_offset = byte_addr[4:0];    // Lower 5 bits: byte offset within word
+    bit_offset = {byte_offset, 3'b000};  // Convert to bit offset (multiply by 8)
+
+    // Read-modify-write for 32-bit slice within 256-bit word
+    case (inode_id)
+      0: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word[bit_offset +: 32] = data;  // Update 32-bit slice
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+      end
+      1: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word[bit_offset +: 32] = data;
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+      end
+      2: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word[bit_offset +: 32] = data;
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+      end
+      3: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word[bit_offset +: 32] = data;
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+      end
+      default: $error("[SRAM_WRITE_DMEM] Invalid inode_id: %0d (must be 0-3)", inode_id);
+    endcase
+
+    // Release after one clock
+    @(posedge clk);
+    case (inode_id)
+      0: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+      1: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+      2: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+      3: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+      default: ;
+    endcase
+
+    $display("[SRAM_DIRECT] DMEM WRITE: inode=%0d, byte_addr=0x%04x (sram[0x%03x][%0d +: 32]), data=0x%08x",
+             inode_id, byte_addr, sram_addr, bit_offset, data);
+  endtask
+
+  // Task to directly read from INODE DMEM SRAM
+  task sram_read_dmem(input int unsigned inode_id, input logic [15:0] byte_addr, output logic [31:0] data);
+    logic [10:0] sram_addr;
+    logic [4:0] byte_offset;
+    logic [7:0] bit_offset;
+    logic [255:0] sram_word;
+
+    if (!sram_backdoor_enable) begin
+      $error("[SRAM_READ_DMEM] Backdoor disabled but called! This should not happen.");
+      data = 'x;
+      return;
+    end
+
+    @(posedge clk);
+
+    // Calculate SRAM word address and byte offset
+    sram_addr = byte_addr[15:5];
+    byte_offset = byte_addr[4:0];
+    bit_offset = {byte_offset, 3'b000};
+
+    // Read 256-bit word and extract 32-bit slice
+    case (inode_id)
+      0: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        data = sram_word[bit_offset +: 32];
+      end
+      1: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        data = sram_word[bit_offset +: 32];
+      end
+      2: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        data = sram_word[bit_offset +: 32];
+      end
+      3: begin
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        data = sram_word[bit_offset +: 32];
+      end
+      default: begin
+        $error("[SRAM_READ_DMEM] Invalid inode_id: %0d (must be 0-3)", inode_id);
+        data = 'x;
+      end
+    endcase
+
+    $display("[SRAM_DIRECT] DMEM READ: inode=%0d, byte_addr=0x%04x (sram[0x%03x][%0d +: 32]), data=0x%08x",
+             inode_id, byte_addr, sram_addr, bit_offset, data);
+  endtask
+
   // Main socket server and transaction processing
   initial begin
     // FSDB waveform dumping for Verdi
@@ -389,7 +593,28 @@ module testbench_imcflow_gem5
     $fsdbDumpvars(0, "+all", "+parameter", "+functions", testbench_imcflow_gem5);
     $fsdbDumpMDA();
 
-    $display("=== Starting ImcFlow RTL Co-Simulation with gem5 ===\n");
+    // Check for SRAM backdoor enable/disable
+    if ($value$plusargs("SRAM_BACKDOOR=%d", sram_backdoor_enable)) begin
+      $display("[CONFIG] SRAM backdoor override from plusarg: %s", sram_backdoor_enable ? "ENABLED" : "DISABLED");
+    end else begin
+      $display("[CONFIG] SRAM backdoor using default: %s", sram_backdoor_enable ? "ENABLED" : "DISABLED");
+    end
+
+    $display("=== Starting ImcFlow RTL Co-Simulation with gem5 ===");
+    if (sram_backdoor_enable) begin
+      $display("[OPTIMIZATION] Direct SRAM backdoor access: ENABLED");
+      $display("[OPTIMIZATION]   - IMEM: 32-bit direct access (bypasses AXI)");
+      $display("[OPTIMIZATION]   - DMEM: 256-bit slice access (bypasses AXI)");
+      $display("[OPTIMIZATION]   - Expected speedup: 5-10x for memory operations");
+    end else begin
+      $display("[OPTIMIZATION] Direct SRAM backdoor access: DISABLED");
+      $display("[OPTIMIZATION]   - All accesses use AXI protocol (slower but more accurate)");
+    end
+    $display("[OPTIMIZATION] Memory map: REG[0x%x-0x%x], INODE0_IMEM[0x%x-0x%x], INODE0_DMEM[0x%x-0x%x]",
+             REG_BASE, REG_BASE + REG_SIZE - 1,
+             INODE_BASE, INODE_BASE + INODE_IMEM_SIZE - 1,
+             INODE_BASE + INODE_IMEM_SIZE, INODE_BASE + INODE_SPACE_SIZE - 1);
+    $display("");
 
     // ==================================================================
     // Initialize FSIM logging infrastructure
@@ -456,30 +681,123 @@ module testbench_imcflow_gem5
           break;
         end
 
-        // Process the transaction via AXI
+        // ==================================================================
+        // Process transaction with optimization:
+        // - Register accesses: Use AXI (required for control logic)
+        // - SRAM accesses: Direct hierarchical access (much faster!)
+        // ==================================================================
         if (is_write) begin
-          automatic logic [AXI_ADDR_WIDTH-1:0] axi_addr;
           automatic logic [19:0] byte_offset;
+          automatic logic [AXI_ADDR_WIDTH-1:0] axi_addr;
+          automatic int unsigned inode_id;
+          automatic logic [19:0] inode_offset;
+          automatic logic [15:0] word_addr;
 
           byte_offset = addr[19:0];
           axi_addr = byte_offset;
 
-          $display("[SV] Processing WRITE: addr=0x%08x -> AXI addr=0x%05x, data=0x%08x",
-                   addr, axi_addr, data);
+          // Decode address to determine access path
+          if (byte_offset < REG_BASE + REG_SIZE) begin
+            // ========== REGISTER ACCESS: Use AXI ==========
+            $display("[SV] Processing WRITE (REG via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                     addr, axi_addr, data);
+            axi_write_single(axi_addr, data);
 
-          axi_write_single(axi_addr, data);
+          end else if (byte_offset >= INODE_BASE && byte_offset < INODE_BASE + (NUM_INODES * INODE_SPACE_SIZE)) begin
+            // ========== INODE MEMORY ACCESS: Direct SRAM ==========
+            inode_id = (byte_offset - INODE_BASE) / INODE_SPACE_SIZE;
+            inode_offset = (byte_offset - INODE_BASE) % INODE_SPACE_SIZE;
+
+            if (inode_id >= NUM_INODES) begin
+              $error("[SV] Invalid inode_id=%0d computed from addr=0x%08x", inode_id, addr);
+              axi_write_single(axi_addr, data);
+            end else if (inode_offset < INODE_IMEM_SIZE) begin
+              // IMEM write - check backdoor flag
+              word_addr = inode_offset;  // Byte address within IMEM
+              if (sram_backdoor_enable) begin
+                $display("[SV] Processing WRITE (IMEM backdoor): addr=0x%08x -> inode=%0d, imem_byte_addr=0x%04x, data=0x%08x",
+                         addr, inode_id, word_addr, data);
+                sram_write_imem(inode_id, word_addr, data);
+              end else begin
+                $display("[SV] Processing WRITE (IMEM via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                         addr, axi_addr, data);
+                axi_write_single(axi_addr, data);
+              end
+            end else begin
+              // DMEM write - check backdoor flag
+              word_addr = inode_offset - INODE_IMEM_SIZE;  // Byte address within DMEM
+              if (sram_backdoor_enable) begin
+                $display("[SV] Processing WRITE (DMEM backdoor): addr=0x%08x -> inode=%0d, dmem_byte_addr=0x%04x, data=0x%08x",
+                         addr, inode_id, word_addr, data);
+                sram_write_dmem(inode_id, word_addr, data);
+              end else begin
+                $display("[SV] Processing WRITE (DMEM via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                         addr, axi_addr, data);
+                axi_write_single(axi_addr, data);
+              end
+            end
+
+          end else begin
+            // Unknown address range - use AXI as fallback
+            $display("[SV] Processing WRITE (Unknown via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                     addr, axi_addr, data);
+            axi_write_single(axi_addr, data);
+          end
 
         end else begin
-          automatic logic [AXI_ADDR_WIDTH-1:0] axi_addr;
           automatic logic [19:0] byte_offset;
+          automatic logic [AXI_ADDR_WIDTH-1:0] axi_addr;
           automatic logic [AXI_DATA_WIDTH-1:0] read_data;
+          automatic int unsigned inode_id;
+          automatic logic [19:0] inode_offset;
+          automatic logic [15:0] word_addr;
 
           byte_offset = addr[19:0];
           axi_addr = byte_offset;
 
-          $display("[SV] Processing READ: addr=0x%08x -> AXI addr=0x%05x", addr, axi_addr);
+          // Decode address to determine access path
+          if (byte_offset < REG_BASE + REG_SIZE) begin
+            // ========== REGISTER ACCESS: Use AXI ==========
+            $display("[SV] Processing READ (REG via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+            axi_read_single(axi_addr, read_data);
 
-          axi_read_single(axi_addr, read_data);
+          end else if (byte_offset >= INODE_BASE && byte_offset < INODE_BASE + (NUM_INODES * INODE_SPACE_SIZE)) begin
+            // ========== INODE MEMORY ACCESS: Direct SRAM ==========
+            inode_id = (byte_offset - INODE_BASE) / INODE_SPACE_SIZE;
+            inode_offset = (byte_offset - INODE_BASE) % INODE_SPACE_SIZE;
+
+            if (inode_id >= NUM_INODES) begin
+              $error("[SV] Invalid inode_id=%0d computed from addr=0x%08x", inode_id, addr);
+              axi_read_single(axi_addr, read_data);
+            end else if (inode_offset < INODE_IMEM_SIZE) begin
+              // IMEM read - check backdoor flag
+              word_addr = inode_offset;  // Byte address within IMEM
+              if (sram_backdoor_enable) begin
+                $display("[SV] Processing READ (IMEM backdoor): addr=0x%08x -> inode=%0d, imem_byte_addr=0x%04x",
+                         addr, inode_id, word_addr);
+                sram_read_imem(inode_id, word_addr, read_data);
+              end else begin
+                $display("[SV] Processing READ (IMEM via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+                axi_read_single(axi_addr, read_data);
+              end
+            end else begin
+              // DMEM read - check backdoor flag
+              word_addr = inode_offset - INODE_IMEM_SIZE;  // Byte address within DMEM
+              if (sram_backdoor_enable) begin
+                $display("[SV] Processing READ (DMEM backdoor): addr=0x%08x -> inode=%0d, dmem_byte_addr=0x%04x",
+                         addr, inode_id, word_addr);
+                sram_read_dmem(inode_id, word_addr, read_data);
+              end else begin
+                $display("[SV] Processing READ (DMEM via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+                axi_read_single(axi_addr, read_data);
+              end
+            end
+
+          end else begin
+            // Unknown address range - use AXI as fallback
+            $display("[SV] Processing READ (Unknown via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+            axi_read_single(axi_addr, read_data);
+          end
 
           $display("[SV] Read data: 0x%08x", read_data);
 
