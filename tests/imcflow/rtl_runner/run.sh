@@ -31,12 +31,19 @@ else
     : "${SOCKET_PORT:=9999}"
 fi
 export SOCKET_PORT
+
+# Set SRAM backdoor enable/disable (default: enabled for performance)
+: "${SRAM_BACKDOOR:=1}"
+export SRAM_BACKDOOR
+
 echo "  RTL Runner - TVM Workload Execution"
 echo "========================================"
-echo "Binary:     $BINARY"
-echo "GDB Mode:   $GDB"
-echo "Test Name:  $TEST_NAME"
-echo "NPZ Dir:    $NPZ_DIR"
+echo "Binary:        $BINARY"
+echo "GDB Mode:      $GDB"
+echo "Test Name:     $TEST_NAME"
+echo "NPZ Dir:       $NPZ_DIR"
+echo "Socket Port:   $SOCKET_PORT"
+echo "SRAM Backdoor: $([ "$SRAM_BACKDOOR" = "1" ] && echo "ENABLED (fast)" || echo "DISABLED (accurate)")"
 echo ""
 
 # Create directories (per-test isolation for concurrent execution)
@@ -119,7 +126,8 @@ echo "VCS listening on port $SOCKET_PORT..."
 echo "VCS log: $LOG_DIR/vcs_sim.log"
 echo "FSIM logs: $LOG_DIR/fsim_logs/"
 echo "Waveform: $FSDB_FILE"
-$BUILD_DIR/simv_imcflow_gem5 +SOCKET_PORT=$SOCKET_PORT +FSIM_LOG_DIR=$LOG_DIR/fsim_logs +fsdbfile+${FSDB_FILE} +fsdb+autoflush > "$LOG_DIR/vcs_sim.log" 2>&1 &
+echo "SRAM Backdoor: $([ "$SRAM_BACKDOOR" = "1" ] && echo "ENABLED" || echo "DISABLED")"
+$BUILD_DIR/simv_imcflow_gem5 +SOCKET_PORT=$SOCKET_PORT +SRAM_BACKDOOR=$SRAM_BACKDOOR +FSIM_LOG_DIR=$LOG_DIR/fsim_logs +fsdbfile+${FSDB_FILE} +fsdb+autoflush > "$LOG_DIR/vcs_sim.log" 2>&1 &
 VCS_PID=$!
 echo "VCS simulation started with PID: $VCS_PID"
 echo ""
