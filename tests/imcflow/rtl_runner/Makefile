@@ -20,6 +20,7 @@ DEFINE := $(DEFINE)+BUGFIX_LOAD_USE_HAZARD# enable fix for load-use hazard in in
 DEFINE := $(DEFINE)+ROUTER_BUG_FIX# router arbiter logic fix
 DEFINE := $(DEFINE)+BUG_FIX_OVERFLOW
 DEFINE := $(DEFINE)+BUGFIX_STEP
+DEFINE := $(DEFINE)+BUGFIX_DWCONV
 PARAM_FILE = "${BUILD_DIR}/parameters.txt"
 INCLUDE_DIR = "${IMCFLOW_DIR}/pmap/modules/top/include+${IMCFLOW_DIR}/pmap/classes+${IMCFLOW_DIR}/pmap/include"
 SOCKET_PORT ?= 9999
