@@ -13,8 +13,7 @@ LOGS_DIR = logs
 # Simulation settings
 SIMUL_EXEC = vcs
 SIMUL_OPTS = ""
-DEFINE = SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+DEBUG# + separated (removed MEM_MODEL for direct SRAM access)
-DEFINE := $(DEFINE)+MEM_MODEL
+DEFINE = SUPPORT_K2+SUPPORT_K3+SUPPORT_K5+SUPPORT_K7+FSIM+MEM_MODEL+DEBUG# + separated (removed MEM_MODEL for direct SRAM access)
 DEFINE := $(DEFINE)+BUGFIX_READ_FROM_GPR# only use when you want to simulate rtl without this bug: already tapeouted
 DEFINE := $(DEFINE)+BUGFIX_LOAD_USE_HAZARD# enable fix for load-use hazard in inode pipeline (this is not yet implemented in RTL)
 DEFINE := $(DEFINE)+ROUTER_BUG_FIX# router arbiter logic fix
