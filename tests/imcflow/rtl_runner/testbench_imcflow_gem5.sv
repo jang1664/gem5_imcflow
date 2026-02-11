@@ -40,6 +40,7 @@ module testbench_imcflow_gem5
   // Clock and reset signals
   logic clk;
   logic rstn;
+  logic assert_reset = 1'b0;
 
   // AXI interface signals between AXI master and imcflow_with_axi
   wire [AXI_ID_WIDTH-1:0]   axi_awid;
@@ -109,6 +110,7 @@ module testbench_imcflow_gem5
       .RstClkCycles(RstCycle),
       .StandByCycles(StandByCycles)
   ) i_clk_gen (
+      .assert_reset_i(assert_reset),
       .clk_o (clk),
       .rstn_o(rstn)
   );
@@ -354,13 +356,16 @@ module testbench_imcflow_gem5
 
   // Memory map constants for direct SRAM access optimization
   // Based on params.svh and imcflow_pkg.sv
-  localparam int unsigned REG_BASE = 32'h0;
-  localparam int unsigned REG_SIZE = 32'h80;  // 128 bytes
-  localparam int unsigned INODE_BASE = 32'h80;  // 128
-  localparam int unsigned INODE_IMEM_SIZE = 32'h400;  // 1024 bytes
-  localparam int unsigned INODE_DMEM_SIZE = 32'h10000;  // 65536 bytes
+  localparam int unsigned REG_BASE = `IMCFLOW_REG_BASE_ADDR; // 0
+  localparam int unsigned REG_SIZE = `IMCFLOW_REG_SPACE_SIZE;  // 128 bytes
+  localparam int unsigned INODE_BASE = `INODE_BASE_ADDR; // 128
+  localparam int unsigned INODE_IMEM_SIZE = `INODE_IMEM_SIZE;  // 1024 bytes
+  localparam int unsigned INODE_DMEM_SIZE = `INODE_DMEM_SIZE;  // 65536 bytes
   localparam int unsigned INODE_SPACE_SIZE = INODE_IMEM_SIZE + INODE_DMEM_SIZE;  // 66560 bytes per inode
   localparam int unsigned NUM_INODES = 4;  // CORE_NUM_HEIGHT = 4
+
+  // Testbench control addresses (intercepted before normal AXI processing)
+  localparam int unsigned TB_CTRL_RESET_GEN = (INODE_IMEM_SIZE > 1024) ? (270464 + 4) : (266368 + 4);
 
   initial begin
     // Get log directory from plusarg, default to "logs/fsim_logs"
@@ -941,7 +946,21 @@ module testbench_imcflow_gem5
           axi_addr = byte_offset;
 
           // Decode address to determine access path
-          if (byte_offset < REG_BASE + REG_SIZE) begin
+          if (addr == TB_CTRL_RESET_GEN) begin
+            // ========== TESTBENCH CONTROL: Reset Generation ==========
+            $display("[SV] Processing WRITE (RESET_GEN): addr=0x%08x, data=0x%08x", addr, data);
+            if (data[0]) begin
+              $display("[SV] Asserting reset via clk_rst_gen (RstClkCycles=%0d)...", RstCycle);
+              assert_reset = 1'b1;
+              @(posedge clk);
+              assert_reset = 1'b0;
+              wait(rstn == 1'b0);
+              wait(rstn == 1'b1);
+              repeat(10) @(posedge clk);
+              $display("[SV] Reset sequence complete, resuming normal operation");
+            end
+
+          end else if (byte_offset < REG_BASE + REG_SIZE) begin
             // ========== REGISTER ACCESS: Use AXI ==========
             $display("[SV] Processing WRITE (REG via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
                      addr, axi_addr, data);
@@ -1000,7 +1019,12 @@ module testbench_imcflow_gem5
           axi_addr = byte_offset;
 
           // Decode address to determine access path
-          if (byte_offset < REG_BASE + REG_SIZE) begin
+          if (addr == TB_CTRL_RESET_GEN) begin
+            // ========== TESTBENCH CONTROL: Reset Gen Status ==========
+            $display("[SV] Processing READ (RESET_GEN): addr=0x%08x -> returning 0", addr);
+            read_data = 32'h0;
+
+          end else if (byte_offset < REG_BASE + REG_SIZE) begin
             // ========== REGISTER ACCESS: Use AXI ==========
             $display("[SV] Processing READ (REG via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
             axi_read_single(axi_addr, read_data);
