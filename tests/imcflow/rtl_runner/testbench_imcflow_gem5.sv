@@ -564,11 +564,11 @@ module testbench_imcflow_gem5
 `endif
 
 `ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
-    $display("[SRAM_DIRECT] IMEM WRITE (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%02x], col=%0d), data=0x%08x",
-             inode_id, byte_addr, row_addr, col_addr, data);
+    $display("[%0t] [SRAM_DIRECT] IMEM WRITE (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%02x], col=%0d), data=0x%08x",
+             $time, inode_id, byte_addr, row_addr, col_addr, data);
 `else
-    $display("[SRAM_DIRECT] IMEM WRITE (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%02x]), data=0x%08x",
-             inode_id, byte_addr, word_addr, data);
+    $display("[%0t] [SRAM_DIRECT] IMEM WRITE (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%02x]), data=0x%08x",
+             $time, inode_id, byte_addr, word_addr, data);
 `endif
   endtask
 
@@ -626,11 +626,11 @@ module testbench_imcflow_gem5
 `endif
 
 `ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
-    $display("[SRAM_DIRECT] IMEM READ (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%02x], col=%0d), data=0x%08x",
-             inode_id, byte_addr, row_addr, col_addr, data);
+    $display("[%0t] [SRAM_DIRECT] IMEM READ (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%02x], col=%0d), data=0x%08x",
+             $time, inode_id, byte_addr, row_addr, col_addr, data);
 `else
-    $display("[SRAM_DIRECT] IMEM READ (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%02x]), data=0x%08x",
-             inode_id, byte_addr, word_addr, data);
+    $display("[%0t] [SRAM_DIRECT] IMEM READ (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%02x]), data=0x%08x",
+             $time, inode_id, byte_addr, word_addr, data);
 `endif
   endtask
 
@@ -747,11 +747,11 @@ module testbench_imcflow_gem5
 `endif
 
 `ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
-    $display("[SRAM_DIRECT] DMEM WRITE (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%03x], mux=%0d, bit_offset=%0d), data=0x%08x",
-             inode_id, byte_addr, row_addr, mux_sel, bit_offset, data);
+    $display("[%0t] [SRAM_DIRECT] DMEM WRITE (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%03x], mux=%0d, bit_offset=%0d), data=0x%08x",
+             $time, inode_id, byte_addr, row_addr, mux_sel, bit_offset, data);
 `else
-    $display("[SRAM_DIRECT] DMEM WRITE (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%03x][%0d +: 32]), data=0x%08x",
-             inode_id, byte_addr, sram_addr, bit_offset, data);
+    $display("[%0t] [SRAM_DIRECT] DMEM WRITE (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%03x][%0d +: 32]), data=0x%08x",
+             $time, inode_id, byte_addr, sram_addr, bit_offset, data);
 `endif
   endtask
 
@@ -827,11 +827,11 @@ module testbench_imcflow_gem5
 `endif
 
 `ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
-    $display("[SRAM_DIRECT] DMEM READ (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%03x], mux=%0d, bit_offset=%0d), data=0x%08x",
-             inode_id, byte_addr, row_addr, mux_sel, bit_offset, data);
+    $display("[%0t] [SRAM_DIRECT] DMEM READ (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%03x], mux=%0d, bit_offset=%0d), data=0x%08x",
+             $time, inode_id, byte_addr, row_addr, mux_sel, bit_offset, data);
 `else
-    $display("[SRAM_DIRECT] DMEM READ (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%03x][%0d +: 32]), data=0x%08x",
-             inode_id, byte_addr, sram_addr, bit_offset, data);
+    $display("[%0t] [SRAM_DIRECT] DMEM READ (behavioral): inode=%0d, byte_addr=0x%04x (sram[0x%03x][%0d +: 32]), data=0x%08x",
+             $time, inode_id, byte_addr, sram_addr, bit_offset, data);
 `endif
   endtask
 
@@ -844,23 +844,23 @@ module testbench_imcflow_gem5
 
     // Check for SRAM backdoor enable/disable
     if ($value$plusargs("SRAM_BACKDOOR=%d", sram_backdoor_enable)) begin
-      $display("[CONFIG] SRAM backdoor override from plusarg: %s", sram_backdoor_enable ? "ENABLED" : "DISABLED");
+      $display("[%0t] [CONFIG] SRAM backdoor override from plusarg: %s", $time, sram_backdoor_enable ? "ENABLED" : "DISABLED");
     end else begin
-      $display("[CONFIG] SRAM backdoor using default: %s", sram_backdoor_enable ? "ENABLED" : "DISABLED");
+      $display("[%0t] [CONFIG] SRAM backdoor using default: %s", $time, sram_backdoor_enable ? "ENABLED" : "DISABLED");
     end
 
-    $display("=== Starting ImcFlow RTL Co-Simulation with gem5 ===");
+    $display("[%0t] === Starting ImcFlow RTL Co-Simulation with gem5 ===", $time);
     if (sram_backdoor_enable) begin
-      $display("[OPTIMIZATION] Direct SRAM backdoor access: ENABLED");
-      $display("[OPTIMIZATION]   - IMEM: 32-bit direct access (bypasses AXI)");
-      $display("[OPTIMIZATION]   - DMEM: 256-bit slice access (bypasses AXI)");
-      $display("[OPTIMIZATION]   - Expected speedup: 5-10x for memory operations");
+      $display("[%0t] [OPTIMIZATION] Direct SRAM backdoor access: ENABLED", $time);
+      $display("[%0t] [OPTIMIZATION]   - IMEM: 32-bit direct access (bypasses AXI)", $time);
+      $display("[%0t] [OPTIMIZATION]   - DMEM: 256-bit slice access (bypasses AXI)", $time);
+      $display("[%0t] [OPTIMIZATION]   - Expected speedup: 5-10x for memory operations", $time);
     end else begin
-      $display("[OPTIMIZATION] Direct SRAM backdoor access: DISABLED");
-      $display("[OPTIMIZATION]   - All accesses use AXI protocol (slower but more accurate)");
+      $display("[%0t] [OPTIMIZATION] Direct SRAM backdoor access: DISABLED", $time);
+      $display("[%0t] [OPTIMIZATION]   - All accesses use AXI protocol (slower but more accurate)", $time);
     end
-    $display("[OPTIMIZATION] Memory map: REG[0x%x-0x%x], INODE0_IMEM[0x%x-0x%x], INODE0_DMEM[0x%x-0x%x]",
-             REG_BASE, REG_BASE + REG_SIZE - 1,
+    $display("[%0t] [OPTIMIZATION] Memory map: REG[0x%x-0x%x], INODE0_IMEM[0x%x-0x%x], INODE0_DMEM[0x%x-0x%x]",
+             $time, REG_BASE, REG_BASE + REG_SIZE - 1,
              INODE_BASE, INODE_BASE + INODE_IMEM_SIZE - 1,
              INODE_BASE + INODE_IMEM_SIZE, INODE_BASE + INODE_SPACE_SIZE - 1);
     $display("");
@@ -872,7 +872,7 @@ module testbench_imcflow_gem5
     // When FSIM is defined, ModuleLogger instances in RTL modules will
     // create log files in logs/fsim_logs/{module_name}.log
     // ==================================================================
-    $display("[FSIM] Creating log directory: %s", log_file_path);
+    $display("[%0t] [FSIM] Creating log directory: %s", $time, log_file_path);
     $system({"mkdir -p ", log_file_path});
     `ifdef FSIM
     fdm.set_log_file_path(log_file_path);
@@ -881,7 +881,7 @@ module testbench_imcflow_gem5
     $fdisplay(log_fd, "=== ImcFlow RTL Co-Simulation with gem5 ===");
     $fdisplay(log_fd, "Timestamp: %0t", $time);
     $fflush(log_fd);
-    $display("[FSIM] Log files will be created in: %s/", log_file_path);
+    $display("[%0t] [FSIM] Log files will be created in: %s/", $time, log_file_path);
     $display("");
 
     // Initialize AXI master
@@ -896,22 +896,22 @@ module testbench_imcflow_gem5
     if (!$value$plusargs("SOCKET_PORT=%d", socket_port)) begin
       socket_port = 9999;  // Default port
     end
-    $display("[SV] Initializing socket server on port %0d", socket_port);
+    $display("[%0t] [SV] Initializing socket server on port %0d", $time, socket_port);
     result = socket_server_init(socket_port);
     if (result != 0) begin
-      $display("[SV] ERROR: Failed to initialize socket server");
+      $display("[%0t] [SV] ERROR: Failed to initialize socket server", $time);
       $finish;
     end
 
     // Wait for client connection
-    $display("[SV] Waiting for gem5 client connection...");
+    $display("[%0t] [SV] Waiting for gem5 client connection...", $time);
     result = socket_server_accept();
     if (result != 0) begin
-      $display("[SV] ERROR: Failed to accept client");
+      $display("[%0t] [SV] ERROR: Failed to accept client", $time);
       $finish;
     end
 
-    $display("[SV] gem5 connected! Starting transaction processing...\n");
+    $display("[%0t] [SV] gem5 connected! Starting transaction processing...\n", $time);
 
     // Main loop: process transactions
     no_transaction_count = 0;
@@ -926,7 +926,7 @@ module testbench_imcflow_gem5
         // Transaction available - receive it
         result = socket_recv_transaction(is_write, addr, data);
         if (result != 0) begin
-          $display("[SV] ERROR: Failed to receive transaction");
+          $display("[%0t] [SV] ERROR: Failed to receive transaction", $time);
           break;
         end
 
@@ -948,22 +948,22 @@ module testbench_imcflow_gem5
           // Decode address to determine access path
           if (addr == TB_CTRL_RESET_GEN) begin
             // ========== TESTBENCH CONTROL: Reset Generation ==========
-            $display("[SV] Processing WRITE (RESET_GEN): addr=0x%08x, data=0x%08x", addr, data);
+            $display("[%0t] [SV] Processing WRITE (RESET_GEN): addr=0x%08x, data=0x%08x", $time, addr, data);
             if (data[0]) begin
-              $display("[SV] Asserting reset via clk_rst_gen (RstClkCycles=%0d)...", RstCycle);
+              $display("[%0t] [SV] Asserting reset via clk_rst_gen (RstClkCycles=%0d)...", $time, RstCycle);
               assert_reset = 1'b1;
               @(posedge clk);
               assert_reset = 1'b0;
               wait(rstn == 1'b0);
               wait(rstn == 1'b1);
               repeat(10) @(posedge clk);
-              $display("[SV] Reset sequence complete, resuming normal operation");
+              $display("[%0t] [SV] Reset sequence complete, resuming normal operation", $time);
             end
 
           end else if (byte_offset < REG_BASE + REG_SIZE) begin
             // ========== REGISTER ACCESS: Use AXI ==========
-            $display("[SV] Processing WRITE (REG via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
-                     addr, axi_addr, data);
+            $display("[%0t] [SV] Processing WRITE (REG via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                     $time, addr, axi_addr, data);
             axi_write_single(axi_addr, data);
 
           end else if (byte_offset >= INODE_BASE && byte_offset < INODE_BASE + (NUM_INODES * INODE_SPACE_SIZE)) begin
@@ -978,32 +978,32 @@ module testbench_imcflow_gem5
               // IMEM write - check backdoor flag
               word_addr = inode_offset;  // Byte address within IMEM
               if (sram_backdoor_enable) begin
-                $display("[SV] Processing WRITE (IMEM backdoor): addr=0x%08x -> inode=%0d, imem_byte_addr=0x%04x, data=0x%08x",
-                         addr, inode_id, word_addr, data);
+                $display("[%0t] [SV] Processing WRITE (IMEM backdoor): addr=0x%08x -> inode=%0d, imem_byte_addr=0x%04x, data=0x%08x",
+                         $time, addr, inode_id, word_addr, data);
                 sram_write_imem(inode_id, word_addr, data);
               end else begin
-                $display("[SV] Processing WRITE (IMEM via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
-                         addr, axi_addr, data);
+                $display("[%0t] [SV] Processing WRITE (IMEM via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                         $time, addr, axi_addr, data);
                 axi_write_single(axi_addr, data);
               end
             end else begin
               // DMEM write - check backdoor flag
               word_addr = inode_offset - INODE_IMEM_SIZE;  // Byte address within DMEM
               if (sram_backdoor_enable) begin
-                $display("[SV] Processing WRITE (DMEM backdoor): addr=0x%08x -> inode=%0d, dmem_byte_addr=0x%04x, data=0x%08x",
-                         addr, inode_id, word_addr, data);
+                $display("[%0t] [SV] Processing WRITE (DMEM backdoor): addr=0x%08x -> inode=%0d, dmem_byte_addr=0x%04x, data=0x%08x",
+                         $time, addr, inode_id, word_addr, data);
                 sram_write_dmem(inode_id, word_addr, data);
               end else begin
-                $display("[SV] Processing WRITE (DMEM via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
-                         addr, axi_addr, data);
+                $display("[%0t] [SV] Processing WRITE (DMEM via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                         $time, addr, axi_addr, data);
                 axi_write_single(axi_addr, data);
               end
             end
 
           end else begin
             // Unknown address range - use AXI as fallback
-            $display("[SV] Processing WRITE (Unknown via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
-                     addr, axi_addr, data);
+            $display("[%0t] [SV] Processing WRITE (Unknown via AXI): addr=0x%08x -> 0x%05x, data=0x%08x",
+                     $time, addr, axi_addr, data);
             axi_write_single(axi_addr, data);
           end
 
@@ -1021,12 +1021,12 @@ module testbench_imcflow_gem5
           // Decode address to determine access path
           if (addr == TB_CTRL_RESET_GEN) begin
             // ========== TESTBENCH CONTROL: Reset Gen Status ==========
-            $display("[SV] Processing READ (RESET_GEN): addr=0x%08x -> returning 0", addr);
+            $display("[%0t] [SV] Processing READ (RESET_GEN): addr=0x%08x -> returning 0", $time, addr);
             read_data = 32'h0;
 
           end else if (byte_offset < REG_BASE + REG_SIZE) begin
             // ========== REGISTER ACCESS: Use AXI ==========
-            $display("[SV] Processing READ (REG via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+            $display("[%0t] [SV] Processing READ (REG via AXI): addr=0x%08x -> 0x%05x", $time, addr, axi_addr);
             axi_read_single(axi_addr, read_data);
 
           end else if (byte_offset >= INODE_BASE && byte_offset < INODE_BASE + (NUM_INODES * INODE_SPACE_SIZE)) begin
@@ -1041,38 +1041,38 @@ module testbench_imcflow_gem5
               // IMEM read - check backdoor flag
               word_addr = inode_offset;  // Byte address within IMEM
               if (sram_backdoor_enable) begin
-                $display("[SV] Processing READ (IMEM backdoor): addr=0x%08x -> inode=%0d, imem_byte_addr=0x%04x",
-                         addr, inode_id, word_addr);
+                $display("[%0t] [SV] Processing READ (IMEM backdoor): addr=0x%08x -> inode=%0d, imem_byte_addr=0x%04x",
+                         $time, addr, inode_id, word_addr);
                 sram_read_imem(inode_id, word_addr, read_data);
               end else begin
-                $display("[SV] Processing READ (IMEM via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+                $display("[%0t] [SV] Processing READ (IMEM via AXI): addr=0x%08x -> 0x%05x", $time, addr, axi_addr);
                 axi_read_single(axi_addr, read_data);
               end
             end else begin
               // DMEM read - check backdoor flag
               word_addr = inode_offset - INODE_IMEM_SIZE;  // Byte address within DMEM
               if (sram_backdoor_enable) begin
-                $display("[SV] Processing READ (DMEM backdoor): addr=0x%08x -> inode=%0d, dmem_byte_addr=0x%04x",
-                         addr, inode_id, word_addr);
+                $display("[%0t] [SV] Processing READ (DMEM backdoor): addr=0x%08x -> inode=%0d, dmem_byte_addr=0x%04x",
+                         $time, addr, inode_id, word_addr);
                 sram_read_dmem(inode_id, word_addr, read_data);
               end else begin
-                $display("[SV] Processing READ (DMEM via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+                $display("[%0t] [SV] Processing READ (DMEM via AXI): addr=0x%08x -> 0x%05x", $time, addr, axi_addr);
                 axi_read_single(axi_addr, read_data);
               end
             end
 
           end else begin
             // Unknown address range - use AXI as fallback
-            $display("[SV] Processing READ (Unknown via AXI): addr=0x%08x -> 0x%05x", addr, axi_addr);
+            $display("[%0t] [SV] Processing READ (Unknown via AXI): addr=0x%08x -> 0x%05x", $time, addr, axi_addr);
             axi_read_single(axi_addr, read_data);
           end
 
-          $display("[SV] Read data: 0x%08x", read_data);
+          $display("[%0t] [SV] Read data: 0x%08x", $time, read_data);
 
           // Send response to gem5
           result = socket_send_response(read_data);
           if (result != 0) begin
-            $display("[SV] ERROR: Failed to send response");
+            $display("[%0t] [SV] ERROR: Failed to send response", $time);
             break;
           end
         end
@@ -1081,7 +1081,7 @@ module testbench_imcflow_gem5
 
       end else if (result < 0) begin
         // Error occurred or client disconnected
-        $display("[SV] gem5 disconnected or error occurred");
+        $display("[%0t] [SV] gem5 disconnected or error occurred", $time);
         break;
       end else begin
         // No transaction available, wait a bit
@@ -1092,15 +1092,15 @@ module testbench_imcflow_gem5
         if (transaction_received_count == 0) begin
           // Still waiting for first transaction - be very patient (2M cycles ~20ms at 10ns)
           if (no_transaction_count > 2000000) begin
-            $display("[SV] No transactions after 2M cycles, giving up");
+            $display("[%0t] [SV] No transactions after 2M cycles, giving up", $time);
             break;
           end
         end else begin
           // Got transactions, now wait for more with shorter timeout (100k cycles ~1ms)
           if (no_transaction_count > 100000) begin
-            $display("[SV] No more transactions for 100k cycles after receiving %0d transactions",
-                     transaction_received_count);
-            $display("[SV] Assuming test complete");
+            $display("[%0t] [SV] No more transactions for 100k cycles after receiving %0d transactions",
+                     $time, transaction_received_count);
+            $display("[%0t] [SV] Assuming test complete", $time);
             break;
           end
         end
@@ -1108,18 +1108,18 @@ module testbench_imcflow_gem5
       end
     end
 
-    $display("\n[SV] Closing socket server");
+    $display("[%0t] [SV] Closing socket server", $time);
     socket_server_close();
 
-    $display("\n=== ImcFlow RTL Co-Simulation Completed ===");
-    $display("Total transactions processed: %0d", transaction_received_count);
+    $display("[%0t] === ImcFlow RTL Co-Simulation Completed ===", $time);
+    $display("[%0t] Total transactions processed: %0d", $time, transaction_received_count);
     $finish;
   end
 
   // Timeout watchdog (300 seconds of simulation time to allow gem5 initialization)
   initial begin
     #300_000_000_000; // 300 billion time units timeout (5 minutes)
-    $display("\n[SV] GLOBAL TIMEOUT (300s) - forcing finish");
+    $display("[%0t] [SV] GLOBAL TIMEOUT (300s) - forcing finish", $time);
     socket_server_close();
     $finish;
   end
