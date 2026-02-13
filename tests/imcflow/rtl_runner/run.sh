@@ -11,7 +11,7 @@ set -e  # Exit on error
 # Directory structure
 BUILD_DIR="build"
 
-BINARY=${1:-"tvm_host_runner"}
+BINARY=${1:-"execute_graph"}
 GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}

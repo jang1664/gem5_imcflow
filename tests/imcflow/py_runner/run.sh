@@ -18,7 +18,7 @@ mkdir -p "$BINARY_DIR"
 
 # Copy binaries from test-specific host_binary_make directory
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
-cp $TVM_BUILD_DIR/tvm_host_runner "$BINARY_DIR/"
+cp $TVM_BUILD_DIR/$BINARY "$BINARY_DIR/"
 rm -rf "$MLF_DIR"
 cp -r $TVM_BUILD_DIR/mlf "$MLF_DIR"
 echo "MLF copied to $MLF_DIR/"
