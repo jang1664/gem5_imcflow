@@ -125,7 +125,7 @@ Tick ImcflowPIOSocket::read(PacketPtr pkt) {
   ssize_t sent = send(socket_fd, &txn, sizeof(txn), 0);
   if (sent != sizeof(txn)) {
     panic("ImcflowPIOSocket: Failed to send read transaction "
-          "(sent %zd/%zu bytes): %s", sent, sizeof(txn), strerror(errno));
+          "(sent %d/%u bytes): %s", (int)sent, (unsigned)sizeof(txn), strerror(errno));
   }
 
   // Receive response
@@ -134,8 +134,8 @@ Tick ImcflowPIOSocket::read(PacketPtr pkt) {
                           MSG_WAITALL);
   if (received != sizeof(response)) {
     panic("ImcflowPIOSocket: Failed to receive read response "
-          "(got %zd/%zu bytes): %s",
-          received, sizeof(response), strerror(errno));
+          "(got %d/%u bytes): %s",
+          (int)received, (unsigned)sizeof(response), strerror(errno));
   }
 
   const uint64_t data = response.data;
@@ -173,7 +173,7 @@ Tick ImcflowPIOSocket::write(PacketPtr pkt) {
   ssize_t sent = send(socket_fd, &txn, sizeof(txn), 0);
   if (sent != sizeof(txn)) {
     panic("ImcflowPIOSocket: Failed to send write transaction "
-          "(sent %zd/%zu bytes): %s", sent, sizeof(txn), strerror(errno));
+          "(sent %d/%u bytes): %s", (int)sent, (unsigned)sizeof(txn), strerror(errno));
   }
 
   pkt->makeResponse();
