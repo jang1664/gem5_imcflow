@@ -60,11 +60,6 @@ parser.add_argument(
     help="Enable GDB remote debugging on port 7000",
 )
 parser.add_argument(
-    "--npz-file",
-    default="",
-    help="NPZ file path to pass to the binary",
-)
-parser.add_argument(
     "--mlf-dir",
     default="mlf",
     help="Path to MLF directory (default: mlf)",
@@ -135,7 +130,7 @@ if args.gdb:
     print(f"[*] GDB remote debugging enabled on port 7000")
 
 # Build command for binary
-# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name] [npz_file]
+# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name]
 binary_cmd = [args.binary, args.test_name]
 if args.runner_name:
     # Pass default eval_dir, graph, params, then runner_name
@@ -144,10 +139,6 @@ if args.runner_name:
     graph_path = f"{args.mlf_dir}/executor-config/graph/default.graph"
     params_path = f"{args.mlf_dir}/parameters/default.params"
     binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
-
-# Add NPZ file if specified
-if args.npz_file:
-    binary_cmd.append(args.npz_file)
 
 process = Process(cmd=binary_cmd)
 system.cpu.workload = process

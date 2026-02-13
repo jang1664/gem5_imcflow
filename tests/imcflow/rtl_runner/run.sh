@@ -1,10 +1,10 @@
 #!/bin/bash
 # RTL Runner for TVM Workloads
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [npz_dir] [socket_port]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [socket_port]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
-#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/npz_dir 10001
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 10001
 
 set -e  # Exit on error
 
@@ -16,8 +16,7 @@ GDB=${2:-"no"}
 TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
 IMC_SIZE=${5:-"266368"}
-NPZ_DIR=${6:-""}
-SOCKET_PORT_ARG=${7:-""}
+SOCKET_PORT_ARG=${6:-""}
 
 # Set TVM build directory based on test name (uses per-test host_binary_make)
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
@@ -41,7 +40,6 @@ echo "========================================"
 echo "Binary:        $BINARY"
 echo "GDB Mode:      $GDB"
 echo "Test Name:     $TEST_NAME"
-echo "NPZ Dir:       $NPZ_DIR"
 echo "Socket Port:   $SOCKET_PORT"
 echo "SRAM Backdoor: $([ "$SRAM_BACKDOOR" = "1" ] && echo "ENABLED (fast)" || echo "DISABLED (accurate)")"
 echo ""
@@ -80,19 +78,6 @@ if [ -d "$TVM_BUILD_DIR/test_inputs/$TEST_NAME" ]; then
     cp -r $TVM_BUILD_DIR/test_inputs/$TEST_NAME test_inputs/
     echo "  ✓ Copied test inputs for $TEST_NAME"
 fi
-
-# Copy NPZ directory if provided
-if [ -n "$NPZ_DIR" ]; then
-    if [ -d "$NPZ_DIR" ]; then
-        echo "  ✓ NPZ directory found: $NPZ_DIR"
-    else
-        echo "  ! Warning: NPZ directory not found: $NPZ_DIR"
-        NPZ_DIR=""
-    fi
-else
-    NPZ_DIR=""
-fi
-echo ""
 
 # Select gem5 binary: prefer gem5.fast if available, otherwise use gem5.opt
 if [ -f "$GEM5_HOME/build/X86/gem5.fast" ]; then
@@ -169,11 +154,6 @@ GEM5_CMD=(
     "--imc-size" "$IMC_SIZE"
     "--mlf-dir" "$MLF_DIR"
 )
-
-# Add NPZ directory if provided and non-empty
-if [ -n "$NPZ_DIR" ] && [ "$NPZ_DIR" != "" ]; then
-    GEM5_CMD+=("--npz-file" "$NPZ_DIR")
-fi
 
 # Add GDB flag if requested
 if [ "$GDB" == "yes" ]; then
