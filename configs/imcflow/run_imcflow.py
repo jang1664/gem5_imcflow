@@ -49,6 +49,11 @@ parser.add_argument(
     default="mlf",
     help="Path to MLF directory (default: mlf)",
 )
+parser.add_argument(
+    "--extra-args",
+    default="",
+    help="Extra arguments to pass to the binary (e.g., '--region 0')",
+)
 args = parser.parse_args()
 
 # Dump parsed arguments
@@ -72,15 +77,21 @@ if args.gdb:
     system.workload.remote_gdb_port = 7000
 
 # Build command for binary
-# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name]
+# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name] [extra_args...]
 binary_cmd = [args.binary, args.test_name]
 if args.runner_name:
     # Pass default eval_dir, graph, params, then runner_name
     # Use --mlf-dir for test-specific MLF directory (enables concurrent execution)
+    # test_name already includes "eval_dir/" prefix (e.g., "eval_dir/xxx_evl")
     eval_dir = "/root/project/tvm/tvm_practice/test_imcflow/codegen"
     graph_path = f"{args.mlf_dir}/executor-config/graph/default.graph"
     params_path = f"{args.mlf_dir}/parameters/default.params"
     binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
+
+# Append extra arguments if provided (e.g., --region 0)
+if args.extra_args:
+    extra_args_list = args.extra_args.split()
+    binary_cmd.extend(extra_args_list)
 
 process = Process(cmd=binary_cmd)
 system.cpu.workload = process

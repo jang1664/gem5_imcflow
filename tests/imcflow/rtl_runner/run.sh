@@ -1,10 +1,11 @@
 #!/bin/bash
 # RTL Runner for TVM Workloads
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [socket_port]
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [socket_port] [extra_args...]
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
 #   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 10001
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 10001 --region 0
 
 set -e  # Exit on error
 
@@ -17,6 +18,9 @@ TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
 IMC_SIZE=${5:-"266368"}
 SOCKET_PORT_ARG=${6:-""}
+
+# Capture extra arguments (arguments 7 onwards) to pass to the binary
+EXTRA_ARGS="${@:7}"
 
 # Set TVM build directory based on test name (uses per-test host_binary_make)
 TVM_BUILD_DIR=~/project/tvm/tvm_practice/test_imcflow/codegen/${TEST_NAME}/host_binary_make/build
@@ -66,6 +70,7 @@ echo "  ✓ Copied $BINARY to $BINARY_DIR/"
 
 if [ -d "$TVM_BUILD_DIR/mlf" ]; then
     rm -rf "$MLF_DIR"
+    mkdir -p "$(dirname "$MLF_DIR")"
     cp -r $TVM_BUILD_DIR/mlf "$MLF_DIR"
     echo "  ✓ Copied MLF to $MLF_DIR/"
 else
@@ -154,6 +159,12 @@ GEM5_CMD=(
     "--imc-size" "$IMC_SIZE"
     "--mlf-dir" "$MLF_DIR"
 )
+
+# Add extra args if provided (e.g., --region 0)
+if [ -n "$EXTRA_ARGS" ]; then
+    GEM5_CMD+=("--extra-args" "$EXTRA_ARGS")
+    echo "[*] Extra arguments for binary: $EXTRA_ARGS"
+fi
 
 # Add GDB flag if requested
 if [ "$GDB" == "yes" ]; then
