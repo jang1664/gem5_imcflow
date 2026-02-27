@@ -69,6 +69,11 @@ parser.add_argument(
     default="",
     help="Extra arguments to pass to the binary (e.g., '--region 0')",
 )
+parser.add_argument(
+    "--standalone",
+    action="store_true",
+    help="Standalone binary mode: skip TVM-specific arguments (test_name, eval_dir, graph, params, runner_name)",
+)
 args = parser.parse_args()
 
 # Dump parsed arguments
@@ -135,16 +140,22 @@ if args.gdb:
     print(f"[*] GDB remote debugging enabled on port 7000")
 
 # Build command for binary
-# Args: <test_name> [eval_dir] [graph.json] [params.params] [runner_name] [extra_args...]
-binary_cmd = [args.binary, args.test_name]
-if args.runner_name:
-    # Pass default eval_dir, graph, params, then runner_name
-    # Use --mlf-dir for test-specific MLF directory (enables concurrent execution)
-    # test_name already includes "eval_dir/" prefix (e.g., "eval_dir/xxx_evl")
-    eval_dir = "/root/project/tvm/tvm_practice/test_imcflow/codegen"
-    graph_path = f"{args.mlf_dir}/executor-config/graph/default.graph"
-    params_path = f"{args.mlf_dir}/parameters/default.params"
-    binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
+if args.standalone:
+    # Standalone mode: binary only, no TVM-specific arguments
+    binary_cmd = [args.binary]
+else:
+    # TVM mode: <test_name> [eval_dir] [graph.json] [params.params] [runner_name]
+    binary_cmd = [args.binary, args.test_name]
+    if args.runner_name:
+        # Pass default eval_dir, graph, params, then runner_name
+        # Use --mlf-dir for test-specific MLF directory (enables concurrent execution)
+        # test_name already includes "eval_dir/" prefix (e.g., "eval_dir/xxx_evl")
+        eval_dir = "/root/project/tvm/tvm_practice/test_imcflow/codegen"
+        graph_path = f"{args.mlf_dir}/executor-config/graph/default.graph"
+        params_path = f"{args.mlf_dir}/parameters/default.params"
+        binary_cmd.extend(
+            [eval_dir, graph_path, params_path, args.runner_name]
+        )
 
 # Append extra arguments if provided (e.g., --region 0)
 if args.extra_args:
