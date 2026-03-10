@@ -110,7 +110,8 @@ fi
 rm -f "$LOG_DIR/vcs_sim.log" "$LOG_DIR/gem5_output.log"
 
 # Start VCS simulation in background (with per-test waveform file in LOG_DIR)
-FSDB_FILE="$LOG_DIR/imcflow_gem5_${TEST_NAME}.fsdb"
+TEST_BASENAME=$(basename "$TEST_NAME")
+FSDB_FILE="$LOG_DIR/imcflow_gem5_${TEST_BASENAME}.fsdb"
 echo "=== Starting VCS RTL simulation ==="
 echo "VCS listening on port $SOCKET_PORT..."
 echo "VCS log: $LOG_DIR/vcs_sim.log"
