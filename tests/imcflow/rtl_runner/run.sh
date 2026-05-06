@@ -55,6 +55,7 @@ MLF_DIR="mlf_${TEST_NAME}"
 mkdir -p "$BINARY_DIR"
 mkdir -p "$LOG_DIR"
 mkdir -p test_outputs/$TEST_NAME
+mkdir -p test_outputs/$TEST_NAME/rtl_runner/debug_nodes
 echo ""
 
 # Copy TVM binaries and MLF

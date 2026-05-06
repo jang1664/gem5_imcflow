@@ -54,7 +54,18 @@ parser.add_argument(
     default="",
     help="Extra arguments to pass to the binary (e.g., '--region 0')",
 )
+parser.add_argument(
+    "--noise-csv",
+    default=None,
+    help="Path to ADC noise probability CSV. Exported as IMCFLOW_NOISE_CSV "
+    "before the bridge imports Imcflow, so IMCU picks it up at construction.",
+)
 args = parser.parse_args()
+
+# Export noise CSV path into the env so imcflow_sim.imcflow.bridge (loaded
+# lazily on first MMIO transaction) sees it via os.environ in IMCU.__init__.
+if args.noise_csv is not None:
+    os.environ["IMCFLOW_NOISE_CSV"] = args.noise_csv
 
 # Dump parsed arguments
 print("=" * 70)
