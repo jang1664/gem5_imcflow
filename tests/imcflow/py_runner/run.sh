@@ -1,7 +1,8 @@
 #!/bin/bash
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [noise_csv] [noise_layout_json] [noise_mode] [extra_args...]
-# Pass an empty string for [noise_csv]/[noise_layout_json]/[noise_mode] to skip while still supplying [extra_args].
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [noise_csv] [noise_layout_json] [noise_mode] [sample_idx] [extra_args...]
+# Pass an empty string for [noise_csv]/[noise_layout_json]/[noise_mode]/[sample_idx] to skip while still supplying [extra_args].
 # noise_mode is one of: sample (default empirical) | greedy (argmax). Empty means use simulator default.
+# sample_idx is forwarded as the host binary's argv[6]; when set, inputs/outputs land under sample_<N>/ sub-dirs.
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
@@ -9,7 +10,8 @@
 #   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/noise.csv
 #   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/noise.csv /path/to/concat_per_core.json
 #   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/noise.csv "" greedy
-#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 "" "" "" --region 0
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/noise.csv "" greedy 7
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 "" "" "" "" --region 0
 
 BINARY=${1:-"test_imcflow"}
 GDB=${2:-"no"}
@@ -19,9 +21,10 @@ IMC_SIZE=${5:-"266368"}
 NOISE_CSV=${6:-""}
 NOISE_LAYOUT_JSON=${7:-""}
 NOISE_MODE=${8:-""}
+SAMPLE_IDX=${9:-""}
 
-# Capture extra arguments (arguments 9 onwards) to pass to the binary
-EXTRA_ARGS="${@:9}"
+# Capture extra arguments (arguments 10 onwards) to pass to the binary
+EXTRA_ARGS="${@:10}"
 
 # Create per-test directories for isolation (enables concurrent execution)
 BINARY_DIR="binaries/${TEST_NAME}"
@@ -92,9 +95,17 @@ if [ -n "$NOISE_MODE" ]; then
     echo "Noise mode: $NOISE_MODE"
 fi
 
+# Build sample-idx option if provided. Forwarded as argv[6] to the host binary
+# so it writes inputs/outputs under sample_<N>/ sub-dirs (per-sample isolation).
+SAMPLE_IDX_OPT=""
+if [ -n "$SAMPLE_IDX" ]; then
+    SAMPLE_IDX_OPT="--sample-idx $SAMPLE_IDX"
+    echo "Sample idx: $SAMPLE_IDX"
+fi
+
 if [ "$GDB" == "yes" ]; then
-    eval $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR --gdb $NOISE_CSV_OPT $NOISE_LAYOUT_OPT $NOISE_MODE_OPT $EXTRA_ARGS_OPT
+    eval $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR --gdb $NOISE_CSV_OPT $NOISE_LAYOUT_OPT $NOISE_MODE_OPT $SAMPLE_IDX_OPT $EXTRA_ARGS_OPT
 else
     # Run without debug flags for faster execution
-    eval $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR $NOISE_CSV_OPT $NOISE_LAYOUT_OPT $NOISE_MODE_OPT $EXTRA_ARGS_OPT
+    eval $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR $NOISE_CSV_OPT $NOISE_LAYOUT_OPT $NOISE_MODE_OPT $SAMPLE_IDX_OPT $EXTRA_ARGS_OPT
 fi

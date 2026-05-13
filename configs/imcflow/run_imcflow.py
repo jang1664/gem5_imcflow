@@ -55,6 +55,13 @@ parser.add_argument(
     help="Extra arguments to pass to the binary (e.g., '--region 0')",
 )
 parser.add_argument(
+    "--sample-idx",
+    default="",
+    help="Optional sample index passed as binary argv[6]. When set, the host "
+    "binary writes inputs/outputs under sample_<N>/ sub-dirs so one compile "
+    "artifact can be swept over many dataset samples without overwriting.",
+)
+parser.add_argument(
     "--noise-csv",
     default=None,
     help="Path to ADC noise probability CSV. Exported as IMCFLOW_NOISE_CSV "
@@ -116,6 +123,9 @@ if args.runner_name:
     graph_path = f"{args.mlf_dir}/executor-config/graph/default.graph"
     params_path = f"{args.mlf_dir}/parameters/default.params"
     binary_cmd.extend([eval_dir, graph_path, params_path, args.runner_name])
+    # argv[6] = sample_idx (empty string when unused; binary falls back to the
+    # legacy single-sample layout).
+    binary_cmd.append(args.sample_idx)
 
 # Append extra arguments if provided (e.g., --region 0)
 if args.extra_args:
