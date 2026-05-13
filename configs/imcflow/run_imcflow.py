@@ -60,12 +60,30 @@ parser.add_argument(
     help="Path to ADC noise probability CSV. Exported as IMCFLOW_NOISE_CSV "
     "before the bridge imports Imcflow, so IMCU picks it up at construction.",
 )
+parser.add_argument(
+    "--noise-layout-json",
+    default=None,
+    help="Path to imce_map noise layout JSON (concat_per_core.json). Exported "
+    "as IMCFLOW_NOISE_LAYOUT_JSON so each IMCU picks the right pseudo-channel "
+    "slice. CSV must have n_cores*n_per_core channels matching the layout.",
+)
+parser.add_argument(
+    "--noise-mode",
+    choices=["sample", "greedy"],
+    default=None,
+    help="ADC noise sampling mode. 'sample' (default): empirical inverse-CDF; "
+    "'greedy': deterministic argmax over diff_bin. Exported as IMCFLOW_NOISE_MODE.",
+)
 args = parser.parse_args()
 
 # Export noise CSV path into the env so imcflow_sim.imcflow.bridge (loaded
 # lazily on first MMIO transaction) sees it via os.environ in IMCU.__init__.
 if args.noise_csv is not None:
     os.environ["IMCFLOW_NOISE_CSV"] = args.noise_csv
+if args.noise_layout_json is not None:
+    os.environ["IMCFLOW_NOISE_LAYOUT_JSON"] = args.noise_layout_json
+if args.noise_mode is not None:
+    os.environ["IMCFLOW_NOISE_MODE"] = args.noise_mode
 
 # Dump parsed arguments
 print("=" * 70)

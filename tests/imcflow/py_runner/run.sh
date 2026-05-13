@@ -1,12 +1,15 @@
 #!/bin/bash
-# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [noise_csv] [extra_args...]
-# Pass an empty string for [noise_csv] to skip it while still supplying [extra_args].
+# Usage: ./run.sh <binary_name> <gdb_mode> [test_name] [log_dir] [imc_size] [noise_csv] [noise_layout_json] [noise_mode] [extra_args...]
+# Pass an empty string for [noise_csv]/[noise_layout_json]/[noise_mode] to skip while still supplying [extra_args].
+# noise_mode is one of: sample (default empirical) | greedy (argmax). Empty means use simulator default.
 # Examples:
 #   ./run.sh tvm_host_runner no one_conv
 #   ./run.sh tvm_host_runner yes resnet8
 #   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368
 #   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/noise.csv
-#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 "" --region 0
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/noise.csv /path/to/concat_per_core.json
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 /path/to/noise.csv "" greedy
+#   ./run.sh tvm_host_runner no one_conv /path/to/logs 266368 "" "" "" --region 0
 
 BINARY=${1:-"test_imcflow"}
 GDB=${2:-"no"}
@@ -14,9 +17,11 @@ TEST_NAME=${3:-"default_test"}
 LOG_DIR=${4:-"./logs"}
 IMC_SIZE=${5:-"266368"}
 NOISE_CSV=${6:-""}
+NOISE_LAYOUT_JSON=${7:-""}
+NOISE_MODE=${8:-""}
 
-# Capture extra arguments (arguments 7 onwards) to pass to the binary
-EXTRA_ARGS="${@:7}"
+# Capture extra arguments (arguments 9 onwards) to pass to the binary
+EXTRA_ARGS="${@:9}"
 
 # Create per-test directories for isolation (enables concurrent execution)
 BINARY_DIR="binaries/${TEST_NAME}"
@@ -71,9 +76,25 @@ if [ -n "$NOISE_CSV" ]; then
     echo "Noise CSV: $NOISE_CSV"
 fi
 
+# Build noise-layout-json option if provided (imce_map noise mode). Forwarded
+# to run_imcflow.py, which exports IMCFLOW_NOISE_LAYOUT_JSON.
+NOISE_LAYOUT_OPT=""
+if [ -n "$NOISE_LAYOUT_JSON" ]; then
+    NOISE_LAYOUT_OPT="--noise-layout-json $NOISE_LAYOUT_JSON"
+    echo "Noise layout JSON: $NOISE_LAYOUT_JSON"
+fi
+
+# Build noise-mode option if provided. Forwarded to run_imcflow.py which
+# exports IMCFLOW_NOISE_MODE for the IMCU constructor.
+NOISE_MODE_OPT=""
+if [ -n "$NOISE_MODE" ]; then
+    NOISE_MODE_OPT="--noise-mode $NOISE_MODE"
+    echo "Noise mode: $NOISE_MODE"
+fi
+
 if [ "$GDB" == "yes" ]; then
-    eval $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR --gdb $NOISE_CSV_OPT $EXTRA_ARGS_OPT
+    eval $GEM5_BIN --outdir="$LOG_DIR" --debug-flags=$DFLAGS $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR --gdb $NOISE_CSV_OPT $NOISE_LAYOUT_OPT $NOISE_MODE_OPT $EXTRA_ARGS_OPT
 else
     # Run without debug flags for faster execution
-    eval $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR $NOISE_CSV_OPT $EXTRA_ARGS_OPT
+    eval $GEM5_BIN --outdir="$LOG_DIR" $GEM5_HOME/configs/imcflow/run_imcflow.py --binary $BINARY_DIR/$BINARY --test-name $TEST_NAME --runner-name py_runner --imc-size $IMC_SIZE --mlf-dir $MLF_DIR $NOISE_CSV_OPT $NOISE_LAYOUT_OPT $NOISE_MODE_OPT $EXTRA_ARGS_OPT
 fi
