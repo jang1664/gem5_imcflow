@@ -76,14 +76,34 @@ parser.add_argument(
 )
 parser.add_argument(
     "--noise-mode",
-    choices=["sample", "greedy"],
+    choices=["sample", "greedy", "alias"],
     default=None,
-    help="ADC noise sampling mode. 'sample' (default): empirical inverse-CDF; "
+    help="ADC noise sampling mode. 'sample'/'alias' (default): empirical; "
     "'greedy': deterministic argmax over diff_bin. Exported as IMCFLOW_NOISE_MODE.",
+)
+parser.add_argument(
+    "--noise-table-format",
+    choices=["auto", "wpattern_ref", "ref"],
+    default=None,
+    help="Noise CSV table format. 'auto' distinguishes legacy <wpattern>_<ref> "
+    "rows from signed-ref numeric rows. Exported as IMCFLOW_NOISE_TABLE_FORMAT.",
+)
+parser.add_argument(
+    "--noise-granularity",
+    choices=["auto", "weight_bitplane", "input_bitplane"],
+    default=None,
+    help="Noise sampling granularity. ref requires input_bitplane; wpattern_ref "
+    "requires weight_bitplane. Exported as IMCFLOW_NOISE_GRANULARITY.",
+)
+parser.add_argument(
+    "--noise-seed",
+    type=int,
+    default=None,
+    help="Optional seed exported as IMCFLOW_NOISE_SEED for stochastic py noise.",
 )
 args = parser.parse_args()
 
-# Export noise CSV path into the env so imcflow_sim.imcflow.bridge (loaded
+# Export noise config into the env so imcflow_sim.imcflow.bridge (loaded
 # lazily on first MMIO transaction) sees it via os.environ in IMCU.__init__.
 if args.noise_csv is not None:
     os.environ["IMCFLOW_NOISE_CSV"] = args.noise_csv
@@ -91,6 +111,12 @@ if args.noise_layout_json is not None:
     os.environ["IMCFLOW_NOISE_LAYOUT_JSON"] = args.noise_layout_json
 if args.noise_mode is not None:
     os.environ["IMCFLOW_NOISE_MODE"] = args.noise_mode
+if args.noise_table_format is not None:
+    os.environ["IMCFLOW_NOISE_TABLE_FORMAT"] = args.noise_table_format
+if args.noise_granularity is not None:
+    os.environ["IMCFLOW_NOISE_GRANULARITY"] = args.noise_granularity
+if args.noise_seed is not None:
+    os.environ["IMCFLOW_NOISE_SEED"] = str(args.noise_seed)
 
 # Dump parsed arguments
 print("=" * 70)
