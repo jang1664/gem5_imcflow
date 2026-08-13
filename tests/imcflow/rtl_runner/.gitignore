@@ -29,6 +29,8 @@ novas*
 binaries/
 
 # Temporary files
+.rtl_compile.lock
+.rtl_build_manifest.pending.json
 *.swp
 *.dump
 core.*

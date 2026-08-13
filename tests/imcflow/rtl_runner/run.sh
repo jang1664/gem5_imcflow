@@ -95,17 +95,16 @@ else
 fi
 echo ""
 
-# Compile RTL simulation if needed
-if [ ! -f "$BUILD_DIR/simv_imcflow_gem5" ]; then
-    echo "=== Compiling RTL simulation with VCS ==="
-    make compile
-    if [ $? -ne 0 ]; then
-        echo "ERROR: VCS compilation failed"
-        exit 1
-    fi
-    echo "Compilation successful!"
-    echo ""
+# Validate the complete compile manifest, not just the presence of simv.
+# This catches changes to BUGFIX mode/defines, VCS options, source files,
+# filelists, include files, tool identity, and compile-time path variables.
+echo "=== Checking RTL build manifest ==="
+if ! make ensure-compiled IMCFLOW_BUGFIX="${IMCFLOW_BUGFIX:-off}"; then
+    echo "ERROR: RTL build validation/compilation failed"
+    exit 1
 fi
+echo "RTL simulator is ready"
+echo ""
 
 # Clean up any old log files
 rm -f "$LOG_DIR/vcs_sim.log" "$LOG_DIR/gem5_output.log"
