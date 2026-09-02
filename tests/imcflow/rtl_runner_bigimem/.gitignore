@@ -1,0 +1,37 @@
+# Build artifacts
+build/
+*.daidir/
+
+# Logs
+logs/
+*.log
+
+# gem5 outputs
+m5out/
+mlf*/
+
+# Test outputs
+test_outputs/
+
+# VCS files
+*.key
+*.history
+*.vpd
+*.fsdb*
+verdi_config_file
+vc_hdrs.h
+
+# verdi files
+verdiLog/
+novas*
+
+# Binaries
+binaries/
+
+# Temporary files
+*.swp
+*.dump
+core.*
+transcript
+*.wlf
+*.vstf

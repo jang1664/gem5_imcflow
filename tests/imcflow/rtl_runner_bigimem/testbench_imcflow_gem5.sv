@@ -365,7 +365,11 @@ module testbench_imcflow_gem5
   localparam int unsigned NUM_INODES = 4;  // CORE_NUM_HEIGHT = 4
 
   // Testbench control addresses (intercepted before normal AXI processing)
-  localparam int unsigned TB_CTRL_RESET_GEN = (INODE_IMEM_SIZE > 1024) ? (270464 + 4) : (266368 + 4);
+  // RESET_GEN sits right past the whole imcflow address window:
+  //   128 (regs) + 4 inodes x (dmem + imem) bytes, +4.
+  // MUST stay parametric -- a hardcoded pair silently breaks whenever the imem
+  // sizes change (the host then pokes GO at a stale address and polls forever).
+  localparam int unsigned TB_CTRL_RESET_GEN = 128 + 4 * (`INODE_DMEM_SIZE + `INODE_IMEM_SIZE) + 4;
 
   initial begin
     // Get log directory from plusarg, default to "logs/fsim_logs"
@@ -484,9 +488,9 @@ module testbench_imcflow_gem5
   // gem5 sends 32-bit accesses, so byte_addr / 4 = word_addr
   task sram_write_imem(input int unsigned inode_id, input logic [15:0] byte_addr, input logic [31:0] data);
 `ifdef BIG_IMEM
-    // BIG_IMEM (sim-only): 512-word inode imem backed by the behavioral
-    // tc_sram branch gen_ra1_512x32_behav (no hard macro / no bit interleave).
-    logic [8:0] word_addr;   // 512 words = 9-bit address
+    // BIG_IMEM (sim-only): 2048-word inode imem backed by the behavioral
+    // tc_sram branch gen_ra1_big32_behav (no hard macro / no bit interleave).
+    logic [10:0] word_addr;   // 2048 words = 11-bit address
 
     if (!sram_backdoor_enable) begin
       $error("[SRAM_WRITE_IMEM] Backdoor disabled but called! This should not happen.");
@@ -494,22 +498,22 @@ module testbench_imcflow_gem5
     end
 
     @(posedge clk);
-    word_addr = byte_addr[10:2];
+    word_addr = byte_addr[12:2];
 
     case (inode_id)
-      0: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr] = data;
-      1: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr] = data;
-      2: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr] = data;
-      3: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr] = data;
+      0: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr] = data;
+      1: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr] = data;
+      2: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr] = data;
+      3: force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr] = data;
       default: $error("[SRAM_WRITE_IMEM] Invalid inode_id: %0d (must be 0-3)", inode_id);
     endcase
 
     @(posedge clk);
     case (inode_id)
-      0: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
-      1: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
-      2: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
-      3: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
+      0: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
+      1: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
+      2: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
+      3: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
       default: ;
     endcase
 
@@ -609,8 +613,8 @@ module testbench_imcflow_gem5
   // Task to directly read from INODE IMEM SRAM
   task sram_read_imem(input int unsigned inode_id, input logic [15:0] byte_addr, output logic [31:0] data);
 `ifdef BIG_IMEM
-    // BIG_IMEM (sim-only): 512-word behavioral imem (gen_ra1_512x32_behav).
-    logic [8:0] word_addr;
+    // BIG_IMEM (sim-only): 2048-word behavioral imem (gen_ra1_big32_behav).
+    logic [10:0] word_addr;
 
     if (!sram_backdoor_enable) begin
       $error("[SRAM_READ_IMEM] Backdoor disabled but called! This should not happen.");
@@ -619,12 +623,12 @@ module testbench_imcflow_gem5
     end
 
     @(posedge clk);
-    word_addr = byte_addr[10:2];
+    word_addr = byte_addr[12:2];
     case (inode_id)
-      0: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
-      1: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
-      2: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
-      3: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_512x32_behav.sram[word_addr];
+      0: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
+      1: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
+      2: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
+      3: data = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.if_stage.u_imem_intf_node.u_mem.gen_ra1_big32_behav.sram[word_addr];
       default: begin
         $error("[SRAM_READ_IMEM] Invalid inode_id: %0d (must be 0-3)", inode_id);
         data = 'x;
@@ -703,8 +707,8 @@ module testbench_imcflow_gem5
   //   1. Calculate SRAM word address: sram_addr = byte_addr / 32 (divide by 256-bit word size in bytes)
   //   2. Calculate bit offset within 256-bit word: bit_offset = (byte_addr % 32) * 8
   //   3. Write/read 32-bit slice: sram[sram_addr][bit_offset +: 32]
-  task sram_write_dmem(input int unsigned inode_id, input logic [15:0] byte_addr, input logic [31:0] data);
-    logic [10:0] sram_addr;     // 2048 words = 11-bit address (behavioral)
+  task sram_write_dmem(input int unsigned inode_id, input logic [17:0] byte_addr, input logic [31:0] data);
+    logic [12:0] sram_addr;     // 8192 words = 13-bit address (BIG_IMEM behavioral)
     logic [4:0] byte_offset;    // 0-31 byte offset within 256-bit word
     logic [7:0] bit_offset;     // 0-248 bit offset (byte_offset * 8)
     logic [255:0] sram_word;    // 256-bit word for behavioral SRAM
@@ -721,7 +725,7 @@ module testbench_imcflow_gem5
     @(posedge clk);
 
     // Calculate SRAM word address and byte offset
-    sram_addr = byte_addr[15:5];     // Upper bits: word address (divide by 32 bytes)
+    sram_addr = byte_addr[17:5];     // Upper bits: word address (divide by 32 bytes)
     byte_offset = byte_addr[4:0];    // Lower 5 bits: byte offset within word
     bit_offset = {byte_offset, 3'b000};  // Convert to bit offset (multiply by 8)
 
@@ -733,7 +737,7 @@ module testbench_imcflow_gem5
     row_addr = sram_addr[10:2];      // Upper 9 bits = row address
     mux_sel = sram_addr[1:0];        // Lower 2 bits = mux select (4-way)
 
-`ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
+`ifdef DMEM_MACRO_PATH_UNUSED_UNDER_BIG_IMEM
     // Access compiled memory model with bit interleaving
     case (inode_id)
       0: begin
@@ -763,24 +767,24 @@ module testbench_imcflow_gem5
     // Read-modify-write for 32-bit slice within 256-bit word
     case (inode_id)
       0: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         sram_word[bit_offset +: 32] = data;  // Update 32-bit slice
-        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr] = sram_word;
       end
       1: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         sram_word[bit_offset +: 32] = data;
-        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr] = sram_word;
       end
       2: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         sram_word[bit_offset +: 32] = data;
-        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr] = sram_word;
       end
       3: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         sram_word[bit_offset +: 32] = data;
-        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr] = sram_word;
+        force testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr] = sram_word;
       end
       default: $error("[SRAM_WRITE_DMEM] Invalid inode_id: %0d (must be 0-3)", inode_id);
     endcase
@@ -788,7 +792,7 @@ module testbench_imcflow_gem5
 
     // Release after one clock
     @(posedge clk);
-`ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
+`ifdef DMEM_MACRO_PATH_UNUSED_UNDER_BIG_IMEM
     case (inode_id)
       0: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_2048x256m4b1c1.mem.mem[row_addr];
       1: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_2048x256m4b1c1.mem.mem[row_addr];
@@ -798,15 +802,15 @@ module testbench_imcflow_gem5
     endcase
 `else
     case (inode_id)
-      0: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
-      1: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
-      2: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
-      3: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+      0: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
+      1: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
+      2: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
+      3: release testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
       default: ;
     endcase
 `endif
 
-`ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
+`ifdef DMEM_MACRO_PATH_UNUSED_UNDER_BIG_IMEM
     $display("[%0t] [SRAM_DIRECT] DMEM WRITE (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%03x], mux=%0d, bit_offset=%0d), data=0x%08x",
              $time, inode_id, byte_addr, row_addr, mux_sel, bit_offset, data);
 `else
@@ -816,8 +820,8 @@ module testbench_imcflow_gem5
   endtask
 
   // Task to directly read from INODE DMEM SRAM
-  task sram_read_dmem(input int unsigned inode_id, input logic [15:0] byte_addr, output logic [31:0] data);
-    logic [10:0] sram_addr;     // 2048 words = 11-bit address (behavioral)
+  task sram_read_dmem(input int unsigned inode_id, input logic [17:0] byte_addr, output logic [31:0] data);
+    logic [12:0] sram_addr;     // 8192 words = 13-bit address (BIG_IMEM behavioral)
     logic [4:0] byte_offset;    // 0-31 byte offset within 256-bit word
     logic [7:0] bit_offset;     // 0-248 bit offset (byte_offset * 8)
     logic [255:0] sram_word;    // 256-bit word for behavioral SRAM
@@ -835,7 +839,7 @@ module testbench_imcflow_gem5
     @(posedge clk);
 
     // Calculate SRAM word address and byte offset
-    sram_addr = byte_addr[15:5];
+    sram_addr = byte_addr[17:5];
     byte_offset = byte_addr[4:0];
     bit_offset = {byte_offset, 3'b000};
 
@@ -847,7 +851,7 @@ module testbench_imcflow_gem5
     row_addr = sram_addr[10:2];      // Upper 9 bits = row address
     mux_sel = sram_addr[1:0];        // Lower 2 bits = mux select (4-way)
 
-`ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
+`ifdef DMEM_MACRO_PATH_UNUSED_UNDER_BIG_IMEM
     // Access compiled memory model with bit interleaving
     case (inode_id)
       0: data = extract_dmem_bit_interleaving(testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_2048x256m4b1c1.mem.mem[row_addr], mux_sel, bit_offset);
@@ -864,19 +868,19 @@ module testbench_imcflow_gem5
     // Read 256-bit word and extract 32-bit slice
     case (inode_id)
       0: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[0].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         data = sram_word[bit_offset +: 32];
       end
       1: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[1].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         data = sram_word[bit_offset +: 32];
       end
       2: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[2].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         data = sram_word[bit_offset +: 32];
       end
       3: begin
-        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.sram[sram_addr];
+        sram_word = testbench_imcflow_gem5.u_imcflow_with_axi.u_imcflow_impl.core_row[3].core_col[0].inode.u_intf_node.mem_stage.u_mem.gen_ra1w_4096x256_behav.sram[sram_addr];
         data = sram_word[bit_offset +: 32];
       end
       default: begin
@@ -886,7 +890,7 @@ module testbench_imcflow_gem5
     endcase
 `endif
 
-`ifdef TARGET_SYNTHESIS_OR_MEM_MODEL
+`ifdef DMEM_MACRO_PATH_UNUSED_UNDER_BIG_IMEM
     $display("[%0t] [SRAM_DIRECT] DMEM READ (compiled): inode=%0d, byte_addr=0x%04x (mem[0x%03x], mux=%0d, bit_offset=%0d), data=0x%08x",
              $time, inode_id, byte_addr, row_addr, mux_sel, bit_offset, data);
 `else
@@ -1000,7 +1004,7 @@ module testbench_imcflow_gem5
           automatic logic [AXI_ADDR_WIDTH-1:0] axi_addr;
           automatic int unsigned inode_id;
           automatic logic [19:0] inode_offset;
-          automatic logic [15:0] word_addr;
+          automatic logic [17:0] word_addr;  // BIG_IMEM: 128KB DMEM byte offsets need 17 bits
 
           byte_offset = addr[19:0];
           axi_addr = byte_offset;
@@ -1073,7 +1077,7 @@ module testbench_imcflow_gem5
           automatic logic [AXI_DATA_WIDTH-1:0] read_data;
           automatic int unsigned inode_id;
           automatic logic [19:0] inode_offset;
-          automatic logic [15:0] word_addr;
+          automatic logic [17:0] word_addr;  // BIG_IMEM: 128KB DMEM byte offsets need 17 bits
 
           byte_offset = addr[19:0];
           axi_addr = byte_offset;
