@@ -3,7 +3,7 @@
 # Integrates DPI-C socket server with ImcFlow RTL
 ##########################################################################################
 
-.PHONY: help
+.PHONY: help ensure-compiled
 .DEFAULT_GOAL := help
 
 # Directory structure
@@ -73,6 +73,14 @@ compile: clean_all setup ## Compile the RTL co-simulation (usage: make compile D
 	@touch ${COMPILE_STAMP}
 	@echo ""
 	@echo "Build artifacts in: ${BUILD_DIR}/"
+
+ensure-compiled: ## Reuse prebuilt simv if present (${COMPILE_STAMP}), else compile
+	@if [ -x "${SIMV_BINARY}" ] && [ -f "${COMPILE_STAMP}" ]; then \
+	  echo "[ensure-compiled] reusing prebuilt simv: ${SIMV_BINARY}"; \
+	else \
+	  echo "[ensure-compiled] no prebuilt simv, compiling..."; \
+	  $(MAKE) compile; \
+	fi
 
 run: compile ## Run the RTL simulation (waits for gem5 connection on port 9999)
 	@echo "=== Starting ImcFlow RTL Co-Simulation ==="
